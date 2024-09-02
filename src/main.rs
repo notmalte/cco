@@ -1,4 +1,5 @@
 use clap::Parser;
+use compiler::CompilerStage;
 
 mod compiler;
 mod linker;
@@ -10,14 +11,32 @@ struct Args {
     #[arg()]
     path: String,
 
-    #[arg(long, group = "stage")]
+    #[arg(
+        long,
+        group = "stage",
+        conflicts_with = "assembly",
+        help = "Only run the lexer"
+    )]
     lex: bool,
 
-    #[arg(long, group = "stage")]
+    #[arg(
+        long,
+        group = "stage",
+        conflicts_with = "assembly",
+        help = "Only run the lexer and parser"
+    )]
     parse: bool,
 
-    #[arg(long, group = "stage")]
+    #[arg(
+        long,
+        group = "stage",
+        conflicts_with = "assembly",
+        help = "Only run the lexer, parser, and code generator, but stop before emitting assembly"
+    )]
     codegen: bool,
+
+    #[arg(long, short = 'S', help = "Emit assembly code, but do not link")]
+    assembly: bool,
 }
 
 fn main() {
@@ -41,11 +60,23 @@ fn main() {
 
     preprocessor::preprocess(&input_path, &preprocessed_path);
 
-    compiler::compile(&preprocessed_path, &assembly_path);
+    let stage = if args.lex {
+        CompilerStage::Lex
+    } else if args.parse {
+        CompilerStage::Parse
+    } else if args.codegen {
+        CompilerStage::Codegen
+    } else {
+        CompilerStage::Full
+    };
 
+    compiler::compile(&preprocessed_path, &assembly_path, stage);
     std::fs::remove_file(&preprocessed_path).unwrap();
 
-    linker::link(&assembly_path, &binary_path);
+    if args.assembly || stage != CompilerStage::Full {
+        return;
+    }
 
+    linker::link(&assembly_path, &binary_path);
     std::fs::remove_file(&assembly_path).unwrap();
 }
