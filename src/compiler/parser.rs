@@ -107,3 +107,48 @@ impl Parsable for Expression {
 pub fn parse(tokens: &[Token]) -> Result<Program, String> {
     Program::parse(tokens)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse() {
+        let tokens = vec![
+            Token::IntKeyword,
+            Token::Identifier("main".to_string()),
+            Token::OpenParen,
+            Token::VoidKeyword,
+            Token::CloseParen,
+            Token::OpenBrace,
+            Token::ReturnKeyword,
+            Token::IntLiteral(42),
+            Token::Semicolon,
+            Token::CloseBrace,
+        ];
+
+        let expected = Program::Program(FunctionDefinition::Function {
+            name: "main".to_string(),
+            body: Statement::Return(Expression::IntLiteral(42)),
+        });
+
+        assert_eq!(parse(&tokens), Ok(expected));
+    }
+
+    #[test]
+    fn test_parse_error() {
+        let tokens = vec![
+            Token::IntKeyword,
+            Token::Identifier("main".to_string()),
+            Token::OpenParen,
+            Token::VoidKeyword,
+            Token::CloseParen,
+            Token::OpenBrace,
+            Token::ReturnKeyword,
+            Token::IntLiteral(42),
+            Token::CloseBrace,
+        ];
+
+        assert!(parse(&tokens).is_err(),);
+    }
+}
