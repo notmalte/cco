@@ -7,22 +7,25 @@ trait Parsable {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum Program {
-    Program(FunctionDefinition),
+pub struct Program {
+    function_definition: Function,
 }
 
 impl Parsable for Program {
     fn parse(tokens: &[Token]) -> Result<Self, String> {
-        FunctionDefinition::parse(tokens).map(Program::Program)
+        Ok(Program {
+            function_definition: Function::parse(tokens)?,
+        })
     }
 }
 
 #[derive(Debug, PartialEq)]
-pub enum FunctionDefinition {
-    Function { name: String, body: Statement },
+pub struct Function {
+    name: String,
+    body: Statement,
 }
 
-impl Parsable for FunctionDefinition {
+impl Parsable for Function {
     fn parse(tokens: &[Token]) -> Result<Self, String> {
         let rest = match tokens {
             [Token::IntKeyword, rest @ ..] => rest,
@@ -61,7 +64,7 @@ impl Parsable for FunctionDefinition {
 
         let body = Statement::parse(rest)?;
 
-        Ok(FunctionDefinition::Function { name, body })
+        Ok(Function { name, body })
     }
 }
 
@@ -127,10 +130,12 @@ mod tests {
             Token::CloseBrace,
         ];
 
-        let expected = Program::Program(FunctionDefinition::Function {
-            name: "main".to_string(),
-            body: Statement::Return(Expression::IntLiteral(42)),
-        });
+        let expected = Program {
+            function_definition: Function {
+                name: "main".to_string(),
+                body: Statement::Return(Expression::IntLiteral(42)),
+            },
+        };
 
         assert_eq!(parse(&tokens), Ok(expected));
     }
