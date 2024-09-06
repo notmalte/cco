@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+mod codegen;
 mod lexer;
 mod parser;
 
@@ -16,7 +17,11 @@ pub fn compile(input: &PathBuf, output: &PathBuf, stage: CompilerStage) {
 
     let tokens = lexer::tokenize(&str).unwrap();
 
-    dbg!(parser::parse(&tokens).unwrap());
+    let parsed = parser::parse(&tokens).unwrap();
+
+    let ast = codegen::generate(parsed);
+
+    dbg!(ast);
 
     let stub = "\t.globl _main\n_main:\n\tmovl\t$2, %eax\n\tret\n";
 

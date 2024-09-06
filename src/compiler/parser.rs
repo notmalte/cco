@@ -8,7 +8,7 @@ trait Parsable {
 
 #[derive(Debug, PartialEq)]
 pub struct Program {
-    function_definition: Function,
+    pub function_definition: Function,
 }
 
 impl Parsable for Program {
@@ -21,8 +21,8 @@ impl Parsable for Program {
 
 #[derive(Debug, PartialEq)]
 pub struct Function {
-    name: String,
-    body: Statement,
+    pub name: String,
+    pub body: Statement,
 }
 
 impl Parsable for Function {
