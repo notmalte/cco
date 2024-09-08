@@ -8,7 +8,9 @@ mod preprocessor;
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    #[arg()]
+    #[arg(
+        help = "Path to the C source file",
+    )]
     path: String,
 
     #[arg(
