@@ -1,25 +1,13 @@
 use regex::Regex;
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum Token {
-    Identifier(String),
-    VoidKeyword,
-    IntKeyword,
-    ReturnKeyword,
-    IntLiteral(i32),
-    OpenParen,
-    CloseParen,
-    OpenBrace,
-    CloseBrace,
-    Semicolon,
-}
+use super::token::Token;
 
 fn find_first_token(s: &str) -> Option<(Token, &str)> {
     if s.is_empty() {
         return None;
     }
 
-    if let Some(m) = Regex::new(r"^[a-zA-Z_]\w*\b").unwrap().find(&s) {
+    if let Some(m) = Regex::new(r"^[a-zA-Z_]\w*\b").unwrap().find(s) {
         let ms = m.as_str();
         let rest = &s[m.end()..];
 
@@ -33,7 +21,7 @@ fn find_first_token(s: &str) -> Option<(Token, &str)> {
         return Some((t, rest));
     }
 
-    if let Some(m) = Regex::new(r"^\d+\b").unwrap().find(&s) {
+    if let Some(m) = Regex::new(r"^\d+\b").unwrap().find(s) {
         let ms = m.as_str();
         let rest = &s[m.end()..];
 
@@ -42,7 +30,7 @@ fn find_first_token(s: &str) -> Option<(Token, &str)> {
         return Some((t, rest));
     }
 
-    let single_char_tokens = vec![
+    let single_char_tokens = [
         ('(', Token::OpenParen),
         (')', Token::CloseParen),
         ('{', Token::OpenBrace),
@@ -62,7 +50,7 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, String> {
     let mut rest = s.trim_start();
 
     while !rest.is_empty() {
-        if let Some((t, r)) = find_first_token(&rest) {
+        if let Some((t, r)) = find_first_token(rest) {
             tokens.push(t);
             rest = r.trim_start();
         } else {

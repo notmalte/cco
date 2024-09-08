@@ -1,114 +1,90 @@
-use super::lexer::Token;
+use std::collections::VecDeque;
 
-trait Parsable {
-    fn parse(tokens: &[Token]) -> Result<Self, String>
-    where
-        Self: Sized;
+use super::{
+    ast::{Expression, Function, Program, Statement},
+    token::Token,
+};
+
+fn parse_program(tokens: &mut VecDeque<Token>) -> Result<Program, String> {
+    Ok(Program {
+        function_definition: parse_function(tokens)?,
+    })
 }
 
-#[derive(Debug, PartialEq)]
-pub struct Program {
-    pub function_definition: Function,
-}
-
-impl Parsable for Program {
-    fn parse(tokens: &[Token]) -> Result<Self, String> {
-        Ok(Program {
-            function_definition: Function::parse(tokens)?,
-        })
+fn parse_function(tokens: &mut VecDeque<Token>) -> Result<Function, String> {
+    match tokens.pop_front() {
+        Some(Token::IntKeyword) => {}
+        _ => return Err("Expected int keyword".to_string()),
     }
-}
 
-#[derive(Debug, PartialEq)]
-pub struct Function {
-    pub name: String,
-    pub body: Statement,
-}
+    let name = match tokens.pop_front() {
+        Some(Token::Identifier(name)) => name,
+        _ => return Err("Expected identifier".to_string()),
+    };
 
-impl Parsable for Function {
-    fn parse(tokens: &[Token]) -> Result<Self, String> {
-        let rest = match tokens {
-            [Token::IntKeyword, rest @ ..] => rest,
-            _ => return Err("Expected int keyword".to_string()),
-        };
-
-        let (name, rest) = match rest {
-            [Token::Identifier(name), rest @ ..] => (name.clone(), rest),
-            _ => return Err("Expected identifier".to_string()),
-        };
-
-        let rest = match rest {
-            [Token::OpenParen, rest @ ..] => rest,
-            _ => return Err("Expected open parenthesis".to_string()),
-        };
-
-        let rest = match rest {
-            [Token::VoidKeyword, rest @ ..] => rest,
-            _ => return Err("Expected void keyword".to_string()),
-        };
-
-        let rest = match rest {
-            [Token::CloseParen, rest @ ..] => rest,
-            _ => return Err("Expected close parenthesis".to_string()),
-        };
-
-        let rest = match rest {
-            [Token::OpenBrace, rest @ ..] => rest,
-            _ => return Err("Expected open brace".to_string()),
-        };
-
-        let rest = match rest {
-            [rest @ .., Token::CloseBrace] => rest,
-            _ => return Err("Expected close brace".to_string()),
-        };
-
-        let body = Statement::parse(rest)?;
-
-        Ok(Function { name, body })
+    match tokens.pop_front() {
+        Some(Token::OpenParen) => {}
+        _ => return Err("Expected open parenthesis".to_string()),
     }
-}
 
-#[derive(Debug, PartialEq)]
-pub enum Statement {
-    Return(Expression),
-}
-
-impl Parsable for Statement {
-    fn parse(tokens: &[Token]) -> Result<Self, String> {
-        let rest = match tokens {
-            [Token::ReturnKeyword, rest @ ..] => rest,
-            _ => return Err("Expected return keyword".to_string()),
-        };
-
-        let rest = match rest {
-            [rest @ .., Token::Semicolon] => rest,
-            _ => return Err("Expected semicolon".to_string()),
-        };
-
-        let expression = Expression::parse(rest)?;
-
-        Ok(Statement::Return(expression))
+    match tokens.pop_front() {
+        Some(Token::VoidKeyword) => {}
+        _ => return Err("Expected void keyword".to_string()),
     }
+
+    match tokens.pop_front() {
+        Some(Token::CloseParen) => {}
+        _ => return Err("Expected close parenthesis".to_string()),
+    }
+
+    match tokens.pop_front() {
+        Some(Token::OpenBrace) => {}
+        _ => return Err("Expected open brace".to_string()),
+    }
+
+    let body = parse_statement(tokens)?;
+
+    match tokens.pop_front() {
+        Some(Token::CloseBrace) => {}
+        _ => return Err("Expected close brace".to_string()),
+    }
+
+    Ok(Function { name, body })
 }
 
-#[derive(Debug, PartialEq)]
-pub enum Expression {
-    IntLiteral(i32),
+fn parse_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
+    match tokens.pop_front() {
+        Some(Token::ReturnKeyword) => {}
+        _ => return Err("Expected return keyword".to_string()),
+    }
+
+    let expression = parse_expression(tokens)?;
+
+    match tokens.pop_front() {
+        Some(Token::Semicolon) => {}
+        _ => return Err("Expected semicolon".to_string()),
+    }
+
+    Ok(Statement::Return(expression))
 }
 
-impl Parsable for Expression {
-    fn parse(tokens: &[Token]) -> Result<Self, String> {
-        let value = match tokens {
-            [Token::IntLiteral(value)] => value,
-            _ => return Err("Expected int literal".to_string()),
-        };
-
-        Ok(Expression::IntLiteral(*value))
+fn parse_expression(tokens: &mut VecDeque<Token>) -> Result<Expression, String> {
+    match tokens.pop_front() {
+        Some(Token::IntLiteral(value)) => Ok(Expression::IntLiteral(value)),
+        _ => Err("Expected int literal".to_string()),
     }
 }
 
 pub fn parse(tokens: &[Token]) -> Result<Program, String> {
-    Program::parse(tokens)
+    let mut tokens = VecDeque::from_iter(tokens.iter().cloned());
+
+    let program = parse_program(&mut tokens)?;
+
+    if !tokens.is_empty() {
+        return Err("Expected EOF".to_string());
+    }
+
+    Ok(program)
 }
 
 #[cfg(test)]
@@ -154,6 +130,6 @@ mod tests {
             Token::CloseBrace,
         ];
 
-        assert!(parse(&tokens).is_err(),);
+        assert!(parse(&tokens).is_err());
     }
 }

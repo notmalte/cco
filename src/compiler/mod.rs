@@ -1,9 +1,10 @@
-use std::path::PathBuf;
-
+mod asm;
+mod ast;
 mod codegen;
 mod emitter;
 mod lexer;
 mod parser;
+mod token;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompilerStage {
@@ -13,7 +14,7 @@ pub enum CompilerStage {
     Full,
 }
 
-pub fn compile(input: &PathBuf, output: &PathBuf, stage: CompilerStage) {
+pub fn compile(input: &std::path::PathBuf, output: &std::path::PathBuf, stage: CompilerStage) {
     if std::env::consts::OS != "macos" {
         panic!("Unsupported OS");
     }

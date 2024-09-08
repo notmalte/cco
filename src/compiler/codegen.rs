@@ -1,59 +1,46 @@
-use super::parser::{
-    Expression as AstExpression, Program as AstProgram, Statement as AstStatement,
-};
+use super::{asm, ast};
 
-#[derive(Debug, PartialEq)]
-pub struct Program {
-    pub function_definition: Function,
+fn generate_program(program: ast::Program) -> asm::Program {
+    asm::Program {
+        function_definition: generate_function(program.function_definition),
+    }
 }
 
-#[derive(Debug, PartialEq)]
-pub struct Function {
-    pub name: String,
-    pub instructions: Vec<Instruction>,
+fn generate_function(function: ast::Function) -> asm::Function {
+    asm::Function {
+        name: function.name,
+        instructions: generate_instructions_from_statement(function.body),
+    }
 }
 
-#[derive(Debug, PartialEq)]
-pub enum Instruction {
-    Mov { src: Operand, dst: Operand },
-    Ret,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum Operand {
-    Imm(i32),
-    Register,
-}
-
-pub fn generate(ast_program: AstProgram) -> Program {
-    Program {
-        function_definition: Function {
-            name: ast_program.function_definition.name,
-            instructions: match ast_program.function_definition.body {
-                AstStatement::Return(expr) => match expr {
-                    AstExpression::IntLiteral(value) => vec![
-                        Instruction::Mov {
-                            src: Operand::Imm(value),
-                            dst: Operand::Register,
-                        },
-                        Instruction::Ret,
-                    ],
+fn generate_instructions_from_statement(statement: ast::Statement) -> Vec<asm::Instruction> {
+    match statement {
+        ast::Statement::Return(expr) => match expr {
+            ast::Expression::IntLiteral(value) => vec![
+                asm::Instruction::Mov {
+                    src: asm::Operand::Imm(value),
+                    dst: asm::Operand::Register,
                 },
-            },
+                asm::Instruction::Ret,
+            ],
         },
     }
 }
 
+pub fn generate(program: ast::Program) -> asm::Program {
+    generate_program(program)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{super::parser::Function as AstFunction, *};
+    use super::*;
 
     #[test]
     fn test_generate() {
-        let ast_program = AstProgram {
-            function_definition: AstFunction {
+        let ast_program = ast::Program {
+            function_definition: ast::Function {
                 name: "main".to_string(),
-                body: AstStatement::Return(AstExpression::IntLiteral(42)),
+                body: ast::Statement::Return(ast::Expression::IntLiteral(42)),
             },
         };
 
@@ -61,15 +48,15 @@ mod tests {
 
         assert_eq!(
             program,
-            Program {
-                function_definition: Function {
+            asm::Program {
+                function_definition: asm::Function {
                     name: "main".to_string(),
                     instructions: vec![
-                        Instruction::Mov {
-                            src: Operand::Imm(42),
-                            dst: Operand::Register,
+                        asm::Instruction::Mov {
+                            src: asm::Operand::Imm(42),
+                            dst: asm::Operand::Register,
                         },
-                        Instruction::Ret,
+                        asm::Instruction::Ret,
                     ],
                 },
             }

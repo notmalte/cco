@@ -1,4 +1,4 @@
-use super::codegen::{Function, Instruction, Operand, Program};
+use super::asm::{Function, Instruction, Operand, Program};
 
 fn emit_program(program: Program) -> String {
     emit_function(program.function_definition)
@@ -10,7 +10,7 @@ fn emit_function(function: Function) -> String {
     let instructions = function
         .instructions
         .iter()
-        .map(|instruction| emit_instruction(instruction))
+        .map(emit_instruction)
         .collect::<Vec<_>>()
         .join("\n");
 
