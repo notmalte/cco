@@ -36,3 +36,28 @@ fn emit_operand(operand: &Operand) -> String {
 pub fn emit(program: Program) -> String {
     emit_program(program)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_emit() {
+        let program = Program {
+            function_definition: Function {
+                name: "main".to_string(),
+                instructions: vec![
+                    Instruction::Mov {
+                        src: Operand::Imm(42),
+                        dst: Operand::Register,
+                    },
+                    Instruction::Ret,
+                ],
+            },
+        };
+
+        let expected = "\t.globl _main\n_main:\n\tmovl $42, %eax\n\tret\n";
+
+        assert_eq!(emit(program), expected);
+    }
+}
