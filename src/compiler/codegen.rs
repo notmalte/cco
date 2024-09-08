@@ -4,13 +4,13 @@ use super::parser::{
 
 #[derive(Debug, PartialEq)]
 pub struct Program {
-    function_definition: Function,
+    pub function_definition: Function,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct Function {
-    name: String,
-    instructions: Vec<Instruction>,
+    pub name: String,
+    pub instructions: Vec<Instruction>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -26,7 +26,7 @@ pub enum Operand {
 }
 
 pub fn generate(ast_program: AstProgram) -> Program {
-    return Program {
+    Program {
         function_definition: Function {
             name: ast_program.function_definition.name,
             instructions: match ast_program.function_definition.body {
@@ -41,7 +41,7 @@ pub fn generate(ast_program: AstProgram) -> Program {
                 },
             },
         },
-    };
+    }
 }
 
 #[cfg(test)]
