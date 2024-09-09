@@ -17,4 +17,11 @@ pub enum Statement {
 #[derive(Debug, PartialEq)]
 pub enum Expression {
     IntLiteral(i32),
+    Unary(UnaryOperator, Box<Expression>),
+}
+
+#[derive(Debug, PartialEq)]
+pub enum UnaryOperator {
+    Complement,
+    Negate,
 }

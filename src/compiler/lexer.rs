@@ -30,19 +30,24 @@ fn find_first_token(s: &str) -> Option<(Token, &str)> {
         return Some((t, rest));
     }
 
-    let single_char_tokens = [
-        ('(', Token::OpenParen),
-        (')', Token::CloseParen),
-        ('{', Token::OpenBrace),
-        ('}', Token::CloseBrace),
-        (';', Token::Semicolon),
+    let tokens = [
+        ("--", Token::MinusMinus),
+        ("~", Token::Tilde),
+        ("-", Token::Minus),
+        ("(", Token::OpenParen),
+        (")", Token::CloseParen),
+        ("{", Token::OpenBrace),
+        ("}", Token::CloseBrace),
+        (";", Token::Semicolon),
     ];
 
-    let first_char = s.chars().next().unwrap();
-
-    single_char_tokens
-        .iter()
-        .find_map(|(c, t)| (*c == first_char).then(|| (t.clone(), &s[1..])))
+    tokens.iter().find_map(|(c, t)| {
+        if s.starts_with(c) {
+            Some((t.clone(), &s[c.len()..]))
+        } else {
+            None
+        }
+    })
 }
 
 pub fn tokenize(s: &str) -> Result<Vec<Token>, String> {
@@ -163,5 +168,49 @@ mod tests {
         ]);
 
         assert_eq!(tokenize(input), expected);
+    }
+
+    #[test]
+    fn test_unary_ops() {
+        assert_eq!(
+            tokenize("-42"),
+            Ok(vec![Token::Minus, Token::IntLiteral(42)])
+        );
+
+        assert_eq!(
+            tokenize("--42"),
+            Ok(vec![Token::MinusMinus, Token::IntLiteral(42)])
+        );
+
+        assert_eq!(
+            tokenize("~42"),
+            Ok(vec![Token::Tilde, Token::IntLiteral(42)])
+        );
+
+        assert_eq!(
+            tokenize("~~42"),
+            Ok(vec![Token::Tilde, Token::Tilde, Token::IntLiteral(42)])
+        );
+
+        assert_eq!(
+            tokenize("~-42"),
+            Ok(vec![Token::Tilde, Token::Minus, Token::IntLiteral(42)])
+        );
+
+        assert_eq!(
+            tokenize("-~42"),
+            Ok(vec![Token::Minus, Token::Tilde, Token::IntLiteral(42)])
+        );
+
+        assert_eq!(
+            tokenize("-(-42)"),
+            Ok(vec![
+                Token::Minus,
+                Token::OpenParen,
+                Token::Minus,
+                Token::IntLiteral(42),
+                Token::CloseParen,
+            ])
+        );
     }
 }

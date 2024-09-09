@@ -23,6 +23,7 @@ fn generate_instructions_from_statement(statement: ast::Statement) -> Vec<asm::I
                 },
                 asm::Instruction::Ret,
             ],
+            ast::Expression::Unary(_, _) => todo!(),
         },
     }
 }

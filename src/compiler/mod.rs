@@ -27,19 +27,19 @@ pub fn compile(input: &std::path::PathBuf, output: &std::path::PathBuf, stage: C
         return;
     }
 
-    let parsed = parser::parse(&tokens).unwrap();
+    let ast = parser::parse(&tokens).unwrap();
 
     if stage == CompilerStage::Parse {
         return;
     }
 
-    let ast = codegen::generate(parsed);
+    let asm = codegen::generate(ast);
 
     if stage == CompilerStage::Codegen {
         return;
     }
 
-    let emitted = emitter::emit(ast);
+    let emitted = emitter::emit(asm);
 
     if stage != CompilerStage::Full {
         return;
