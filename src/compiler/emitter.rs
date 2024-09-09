@@ -18,19 +18,23 @@ fn emit_function(function: Function) -> String {
 }
 
 fn emit_instruction(instruction: &Instruction) -> String {
-    match instruction {
-        Instruction::Mov { src, dst } => {
-            format!("\tmovl {}, {}", emit_operand(src), emit_operand(dst))
-        }
-        Instruction::Ret => "\tret".to_string(),
-    }
+    todo!();
+
+    // match instruction {
+    //     Instruction::Mov { src, dst } => {
+    //         format!("\tmovl {}, {}", emit_operand(src), emit_operand(dst))
+    //     }
+    //     Instruction::Ret => "\tret".to_string(),
+    // }
 }
 
 fn emit_operand(operand: &Operand) -> String {
-    match operand {
-        Operand::Imm(value) => format!("${}", value),
-        Operand::Register => "%eax".to_string(),
-    }
+    todo!();
+
+    // match operand {
+    //     Operand::Imm(value) => format!("${}", value),
+    //     Operand::Register => "%eax".to_string(),
+    // }
 }
 
 pub fn emit(program: Program) -> String {

@@ -16,7 +16,7 @@ pub enum Statement {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
-    Constant(i32),
+    Constant(u64),
     Unary(UnaryOperator, Box<Expression>),
 }
 

@@ -21,7 +21,7 @@ pub enum Instruction {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
-    Constant(i32),
+    Constant(u64),
     Variable(Variable),
 }
 

@@ -30,25 +30,25 @@ pub fn compile(input: &std::path::PathBuf, output: &std::path::PathBuf, stage: C
         return;
     }
 
-    let ast = parser::parse(&tokens).unwrap();
+    let ast_result = parser::parse(&tokens).unwrap();
     if stage == CompilerStage::Parse {
-        dbg!(&ast);
+        dbg!(&ast_result);
         return;
     }
 
-    let tacky = tackygen::generate(&ast);
+    let tacky_result = tackygen::generate(&ast_result);
     if stage == CompilerStage::Tacky {
-        dbg!(&tacky);
+        dbg!(&tacky_result);
         return;
     }
 
-    let asm = codegen::generate(&ast);
+    let asm_result = codegen::generate(&tacky_result);
     if stage == CompilerStage::Codegen {
-        dbg!(&asm);
+        dbg!(&asm_result);
         return;
     }
 
-    let emitted = emitter::emit(asm);
+    let emitted = emitter::emit(asm_result);
 
     std::fs::write(output, emitted).unwrap();
 }
