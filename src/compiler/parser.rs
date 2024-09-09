@@ -61,24 +61,24 @@ fn parse_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
 
 fn parse_expression(tokens: &mut VecDeque<Token>) -> Result<Expression, String> {
     match tokens.front().cloned() {
-        Some(Token::IntLiteral(value)) => {
+        Some(Token::Constant(value)) => {
             tokens.pop_front();
-            return Ok(Expression::IntLiteral(value));
+            Ok(Expression::Constant(value))
         }
         Some(Token::Tilde | Token::Minus) => {
             let operator = parse_unary_operator(tokens)?;
-            let inner = Box::new(parse_expression(tokens)?);
-            return Ok(Expression::Unary(operator, inner));
+            let inner = parse_expression(tokens)?;
+            Ok(Expression::Unary(operator, Box::new(inner)))
         }
         Some(Token::OpenParen) => {
             tokens.pop_front();
-            let inner = Box::new(parse_expression(tokens)?);
+            let inner = parse_expression(tokens)?;
             let Some(Token::CloseParen) = tokens.pop_front() else {
                 return Err("Expected close parenthesis".to_string());
             };
-            return Ok(*inner);
+            Ok(inner)
         }
-        _ => return Err("Expected expression".to_string()),
+        _ => Err("Expected expression".to_string()),
     }
 }
 
@@ -116,7 +116,7 @@ mod tests {
             Token::CloseParen,
             Token::OpenBrace,
             Token::ReturnKeyword,
-            Token::IntLiteral(42),
+            Token::Constant(42),
             Token::Semicolon,
             Token::CloseBrace,
         ];
@@ -124,7 +124,7 @@ mod tests {
         let expected = Program {
             function_definition: Function {
                 name: "main".to_string(),
-                body: Statement::Return(Expression::IntLiteral(42)),
+                body: Statement::Return(Expression::Constant(42)),
             },
         };
 
@@ -141,7 +141,7 @@ mod tests {
             Token::CloseParen,
             Token::OpenBrace,
             Token::ReturnKeyword,
-            Token::IntLiteral(42),
+            Token::Constant(42),
             Token::CloseBrace,
         ];
 

@@ -6,18 +6,28 @@ pub struct Program {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Function {
     pub name: String,
-    pub body: Statement,
+    pub instructions: Vec<Instruction>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Statement {
-    Return(Expression),
+pub enum Instruction {
+    Return(Value),
+    Unary {
+        op: UnaryOperator,
+        src: Value,
+        dst: Variable,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Expression {
+pub enum Value {
     Constant(i32),
-    Unary(UnaryOperator, Box<Expression>),
+    Variable(Variable),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Variable {
+    pub identifier: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -11,7 +11,7 @@ pub enum Token {
     ReturnKeyword,
 
     /// e.g. `42`
-    IntLiteral(i32),
+    Constant(i32),
 
     /// `~`
     Tilde,

@@ -25,7 +25,7 @@ fn find_first_token(s: &str) -> Option<(Token, &str)> {
         let ms = m.as_str();
         let rest = &s[m.end()..];
 
-        let t = Token::IntLiteral(ms.parse().unwrap());
+        let t = Token::Constant(ms.parse().unwrap());
 
         return Some((t, rest));
     }
@@ -41,13 +41,9 @@ fn find_first_token(s: &str) -> Option<(Token, &str)> {
         (";", Token::Semicolon),
     ];
 
-    tokens.iter().find_map(|(c, t)| {
-        if s.starts_with(c) {
-            Some((t.clone(), &s[c.len()..]))
-        } else {
-            None
-        }
-    })
+    tokens
+        .iter()
+        .find_map(|(p, t)| s.strip_prefix(p).map(|rest| (t.clone(), rest)))
 }
 
 pub fn tokenize(s: &str) -> Result<Vec<Token>, String> {
@@ -81,7 +77,7 @@ mod tests {
             ("void", Token::VoidKeyword),
             ("int", Token::IntKeyword),
             ("return", Token::ReturnKeyword),
-            ("42", Token::IntLiteral(42)),
+            ("42", Token::Constant(42)),
             ("(", Token::OpenParen),
             (")", Token::CloseParen),
             ("{", Token::OpenBrace),
@@ -109,7 +105,7 @@ mod tests {
             Token::CloseParen,
             Token::OpenBrace,
             Token::ReturnKeyword,
-            Token::IntLiteral(2),
+            Token::Constant(2),
             Token::Semicolon,
             Token::CloseBrace,
         ]);
@@ -162,7 +158,7 @@ mod tests {
             Token::CloseParen,
             Token::OpenBrace,
             Token::ReturnKeyword,
-            Token::IntLiteral(2),
+            Token::Constant(2),
             Token::Semicolon,
             Token::CloseBrace,
         ]);
@@ -172,34 +168,28 @@ mod tests {
 
     #[test]
     fn test_unary_ops() {
-        assert_eq!(
-            tokenize("-42"),
-            Ok(vec![Token::Minus, Token::IntLiteral(42)])
-        );
+        assert_eq!(tokenize("-42"), Ok(vec![Token::Minus, Token::Constant(42)]));
 
         assert_eq!(
             tokenize("--42"),
-            Ok(vec![Token::MinusMinus, Token::IntLiteral(42)])
+            Ok(vec![Token::MinusMinus, Token::Constant(42)])
         );
 
-        assert_eq!(
-            tokenize("~42"),
-            Ok(vec![Token::Tilde, Token::IntLiteral(42)])
-        );
+        assert_eq!(tokenize("~42"), Ok(vec![Token::Tilde, Token::Constant(42)]));
 
         assert_eq!(
             tokenize("~~42"),
-            Ok(vec![Token::Tilde, Token::Tilde, Token::IntLiteral(42)])
+            Ok(vec![Token::Tilde, Token::Tilde, Token::Constant(42)])
         );
 
         assert_eq!(
             tokenize("~-42"),
-            Ok(vec![Token::Tilde, Token::Minus, Token::IntLiteral(42)])
+            Ok(vec![Token::Tilde, Token::Minus, Token::Constant(42)])
         );
 
         assert_eq!(
             tokenize("-~42"),
-            Ok(vec![Token::Minus, Token::Tilde, Token::IntLiteral(42)])
+            Ok(vec![Token::Minus, Token::Tilde, Token::Constant(42)])
         );
 
         assert_eq!(
@@ -208,7 +198,7 @@ mod tests {
                 Token::Minus,
                 Token::OpenParen,
                 Token::Minus,
-                Token::IntLiteral(42),
+                Token::Constant(42),
                 Token::CloseParen,
             ])
         );

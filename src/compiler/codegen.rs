@@ -1,24 +1,24 @@
 use super::{asm, ast};
 
-fn generate_program(program: ast::Program) -> asm::Program {
+fn generate_program(program: &ast::Program) -> asm::Program {
     asm::Program {
-        function_definition: generate_function(program.function_definition),
+        function_definition: generate_function(&program.function_definition),
     }
 }
 
-fn generate_function(function: ast::Function) -> asm::Function {
+fn generate_function(function: &ast::Function) -> asm::Function {
     asm::Function {
-        name: function.name,
-        instructions: generate_instructions_from_statement(function.body),
+        name: function.name.clone(),
+        instructions: generate_instructions_from_statement(&function.body),
     }
 }
 
-fn generate_instructions_from_statement(statement: ast::Statement) -> Vec<asm::Instruction> {
+fn generate_instructions_from_statement(statement: &ast::Statement) -> Vec<asm::Instruction> {
     match statement {
         ast::Statement::Return(expr) => match expr {
-            ast::Expression::IntLiteral(value) => vec![
+            ast::Expression::Constant(value) => vec![
                 asm::Instruction::Mov {
-                    src: asm::Operand::Imm(value),
+                    src: asm::Operand::Imm(*value),
                     dst: asm::Operand::Register,
                 },
                 asm::Instruction::Ret,
@@ -28,7 +28,7 @@ fn generate_instructions_from_statement(statement: ast::Statement) -> Vec<asm::I
     }
 }
 
-pub fn generate(program: ast::Program) -> asm::Program {
+pub fn generate(program: &ast::Program) -> asm::Program {
     generate_program(program)
 }
 
@@ -41,11 +41,11 @@ mod tests {
         let ast_program = ast::Program {
             function_definition: ast::Function {
                 name: "main".to_string(),
-                body: ast::Statement::Return(ast::Expression::IntLiteral(42)),
+                body: ast::Statement::Return(ast::Expression::Constant(42)),
             },
         };
 
-        let program = generate(ast_program);
+        let program = generate(&ast_program);
 
         assert_eq!(
             program,

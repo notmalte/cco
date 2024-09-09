@@ -8,9 +8,7 @@ mod preprocessor;
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    #[arg(
-        help = "Path to the C source file",
-    )]
+    #[arg(help = "Path to the C source file")]
     path: String,
 
     #[arg(
@@ -33,7 +31,15 @@ struct Args {
         long,
         group = "stage",
         conflicts_with = "assembly",
-        help = "Only run the lexer, parser, and code generator, but stop before emitting assembly"
+        help = "Only run the lexer, parser, and tacky generator"
+    )]
+    tacky: bool,
+
+    #[arg(
+        long,
+        group = "stage",
+        conflicts_with = "assembly",
+        help = "Only run the lexer, parser, tacky generator, and code generator but do not emit assembly"
     )]
     codegen: bool,
 
@@ -66,6 +72,8 @@ fn main() {
         CompilerStage::Lex
     } else if args.parse {
         CompilerStage::Parse
+    } else if args.tacky {
+        CompilerStage::Tacky
     } else if args.codegen {
         CompilerStage::Codegen
     } else {
