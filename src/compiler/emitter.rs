@@ -1,4 +1,8 @@
-use super::asm::{Function, Instruction, Operand, Program};
+use super::asm::{Function, Instruction, Operand, Program, Reg, UnaryOperator};
+
+pub fn emit(program: Program) -> String {
+    emit_program(program)
+}
 
 fn emit_program(program: Program) -> String {
     emit_function(program.function_definition)
@@ -14,31 +18,49 @@ fn emit_function(function: Function) -> String {
         .collect::<Vec<_>>()
         .join("\n");
 
-    format!("\t.globl {}\n{}:\n{}\n", prefixed, prefixed, instructions)
+    format!(
+        "\t.globl {prefixed}
+{prefixed}:
+\tpushq %rbp
+\tmovq %rsp, %rbp
+{instructions}
+"
+    )
 }
 
 fn emit_instruction(instruction: &Instruction) -> String {
-    todo!();
+    match instruction {
+        Instruction::Mov { src, dst } => {
+            format!("\tmovl {}, {}", emit_operand(src), emit_operand(dst))
+        }
+        Instruction::Ret => "\tmovq %rbp, %rsp
+\tpopq %rbp
+\tret"
+            .to_string(),
+        Instruction::Unary(operator, operand) => format!(
+            "\t{} {}",
+            emit_unary_operator(operator),
+            emit_operand(operand)
+        ),
+        Instruction::AllocateStack(size) => format!("\tsubq ${size}, %rsp"),
+    }
+}
 
-    // match instruction {
-    //     Instruction::Mov { src, dst } => {
-    //         format!("\tmovl {}, {}", emit_operand(src), emit_operand(dst))
-    //     }
-    //     Instruction::Ret => "\tret".to_string(),
-    // }
+fn emit_unary_operator(operator: &UnaryOperator) -> String {
+    match operator {
+        UnaryOperator::Neg => "negl".to_string(),
+        UnaryOperator::Not => "notl".to_string(),
+    }
 }
 
 fn emit_operand(operand: &Operand) -> String {
-    todo!();
-
-    // match operand {
-    //     Operand::Imm(value) => format!("${}", value),
-    //     Operand::Register => "%eax".to_string(),
-    // }
-}
-
-pub fn emit(program: Program) -> String {
-    emit_program(program)
+    match operand {
+        Operand::Reg(Reg::AX) => "%eax".to_string(),
+        Operand::Reg(Reg::R10) => "%r10d".to_string(),
+        Operand::Stack(offset) => format!("-{offset}(%rbp)"),
+        Operand::Imm(value) => format!("${}", value),
+        Operand::Pseudo(_) => unreachable!(),
+    }
 }
 
 #[cfg(test)]
@@ -53,14 +75,22 @@ mod tests {
                 instructions: vec![
                     Instruction::Mov {
                         src: Operand::Imm(42),
-                        dst: Operand::Register,
+                        dst: Operand::Reg(Reg::AX),
                     },
                     Instruction::Ret,
                 ],
             },
         };
 
-        let expected = "\t.globl _main\n_main:\n\tmovl $42, %eax\n\tret\n";
+        let expected = "\t.globl _main
+_main:
+\tpushq %rbp
+\tmovq %rsp, %rbp
+\tmovl $42, %eax
+\tmovq %rbp, %rsp
+\tpopq %rbp
+\tret
+";
 
         assert_eq!(emit(program), expected);
     }

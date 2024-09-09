@@ -145,6 +145,7 @@ mod tests {
                 function_definition: asm::Function {
                     name: "main".to_string(),
                     instructions: vec![
+                        asm::Instruction::AllocateStack(0),
                         asm::Instruction::Mov {
                             src: asm::Operand::Imm(42),
                             dst: asm::Operand::Reg(asm::Reg::AX),
