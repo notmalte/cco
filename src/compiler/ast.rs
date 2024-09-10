@@ -18,10 +18,20 @@ pub enum Statement {
 pub enum Expression {
     Constant(u64),
     Unary(UnaryOperator, Box<Expression>),
+    Binary(BinaryOperator, Box<Expression>, Box<Expression>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum UnaryOperator {
     Complement,
     Negate,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum BinaryOperator {
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Remainder,
 }

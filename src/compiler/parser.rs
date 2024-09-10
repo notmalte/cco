@@ -1,9 +1,21 @@
 use std::collections::VecDeque;
 
 use super::{
-    ast::{Expression, Function, Program, Statement, UnaryOperator},
+    ast::{BinaryOperator, Expression, Function, Program, Statement, UnaryOperator},
     token::Token,
 };
+
+pub fn parse(tokens: &[Token]) -> Result<Program, String> {
+    let mut tokens = VecDeque::from_iter(tokens.iter().cloned());
+
+    let program = parse_program(&mut tokens)?;
+
+    if !tokens.is_empty() {
+        return Err("Expected EOF".to_string());
+    }
+
+    Ok(program)
+}
 
 fn parse_program(tokens: &mut VecDeque<Token>) -> Result<Program, String> {
     Ok(Program {
@@ -50,7 +62,7 @@ fn parse_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
         return Err("Expected return keyword".to_string());
     };
 
-    let expression = parse_expression(tokens)?;
+    let expression = parse_expression(tokens, 0)?;
 
     let Some(Token::Semicolon) = tokens.pop_front() else {
         return Err("Expected semicolon".to_string());
@@ -59,7 +71,30 @@ fn parse_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
     Ok(Statement::Return(expression))
 }
 
-fn parse_expression(tokens: &mut VecDeque<Token>) -> Result<Expression, String> {
+fn parse_expression(
+    tokens: &mut VecDeque<Token>,
+    min_precedence: u8,
+) -> Result<Expression, String> {
+    let mut left = parse_factor(tokens)?;
+    while let Some(t) = tokens.front().cloned() {
+        let precedence = match t {
+            Token::Plus | Token::Minus => 1,
+            Token::Asterisk | Token::Slash | Token::Percent => 2,
+            _ => break,
+        };
+
+        if precedence < min_precedence {
+            break;
+        }
+
+        let operator = parse_binary_operator(tokens)?;
+        let right = parse_expression(tokens, precedence + 1)?;
+        left = Expression::Binary(operator, Box::new(left), Box::new(right));
+    }
+    Ok(left)
+}
+
+fn parse_factor(tokens: &mut VecDeque<Token>) -> Result<Expression, String> {
     match tokens.front().cloned() {
         Some(Token::Constant(value)) => {
             tokens.pop_front();
@@ -67,18 +102,18 @@ fn parse_expression(tokens: &mut VecDeque<Token>) -> Result<Expression, String> 
         }
         Some(Token::Tilde | Token::Minus) => {
             let operator = parse_unary_operator(tokens)?;
-            let inner = parse_expression(tokens)?;
+            let inner = parse_factor(tokens)?;
             Ok(Expression::Unary(operator, Box::new(inner)))
         }
         Some(Token::OpenParen) => {
             tokens.pop_front();
-            let inner = parse_expression(tokens)?;
+            let inner = parse_expression(tokens, 0)?;
             let Some(Token::CloseParen) = tokens.pop_front() else {
                 return Err("Expected close parenthesis".to_string());
             };
             Ok(inner)
         }
-        _ => Err("Expected expression".to_string()),
+        _ => Err("Expected factor".to_string()),
     }
 }
 
@@ -90,16 +125,15 @@ fn parse_unary_operator(tokens: &mut VecDeque<Token>) -> Result<UnaryOperator, S
     }
 }
 
-pub fn parse(tokens: &[Token]) -> Result<Program, String> {
-    let mut tokens = VecDeque::from_iter(tokens.iter().cloned());
-
-    let program = parse_program(&mut tokens)?;
-
-    if !tokens.is_empty() {
-        return Err("Expected EOF".to_string());
+fn parse_binary_operator(tokens: &mut VecDeque<Token>) -> Result<BinaryOperator, String> {
+    match tokens.pop_front() {
+        Some(Token::Plus) => Ok(BinaryOperator::Add),
+        Some(Token::Minus) => Ok(BinaryOperator::Subtract),
+        Some(Token::Asterisk) => Ok(BinaryOperator::Multiply),
+        Some(Token::Slash) => Ok(BinaryOperator::Divide),
+        Some(Token::Percent) => Ok(BinaryOperator::Remainder),
+        _ => Err("Expected binary operator".to_string()),
     }
-
-    Ok(program)
 }
 
 #[cfg(test)]

@@ -57,6 +57,7 @@ impl TackyGen {
 
                 tacky::Value::Variable(dst)
             }
+            ast::Expression::Binary(_, _, _) => todo!(),
         }
     }
 
