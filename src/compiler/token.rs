@@ -17,6 +17,15 @@ pub enum Token {
     Tilde,
     /// `-`
     Minus,
+    /// `+`
+    Plus,
+    /// `*`
+    Asterisk,
+    /// `/`
+    Slash,
+    /// `%`
+    Percent,
+
     /// `--`
     MinusMinus,
 
