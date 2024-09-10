@@ -1,4 +1,4 @@
-use super::asm::{Function, Instruction, Operand, Program, Reg, UnaryOperator};
+use super::asm::{BinaryOperator, Function, Instruction, Operand, Program, Reg, UnaryOperator};
 
 pub fn emit(program: Program) -> String {
     emit_program(program)
@@ -40,8 +40,17 @@ fn emit_instruction(instruction: &Instruction) -> String {
         Instruction::Unary { op, dst } => {
             format!("\t{} {}", emit_unary_operator(op), emit_operand(dst))
         }
+        Instruction::Binary { op, src, dst } => {
+            format!(
+                "\t{} {}, {}",
+                emit_binary_operator(op),
+                emit_operand(src),
+                emit_operand(dst)
+            )
+        }
+        Instruction::Idiv(operand) => format!("\tidivl {}", emit_operand(operand)),
+        Instruction::Cdq => "\tcdq".to_string(),
         Instruction::AllocateStack(size) => format!("\tsubq ${size}, %rsp"),
-        _ => todo!(),
     }
 }
 
@@ -52,14 +61,23 @@ fn emit_unary_operator(operator: &UnaryOperator) -> String {
     }
 }
 
+fn emit_binary_operator(operator: &BinaryOperator) -> String {
+    match operator {
+        BinaryOperator::Add => "addl".to_string(),
+        BinaryOperator::Sub => "subl".to_string(),
+        BinaryOperator::Mult => "imull".to_string(),
+    }
+}
+
 fn emit_operand(operand: &Operand) -> String {
     match operand {
         Operand::Reg(Reg::AX) => "%eax".to_string(),
+        Operand::Reg(Reg::DX) => "%edx".to_string(),
         Operand::Reg(Reg::R10) => "%r10d".to_string(),
+        Operand::Reg(Reg::R11) => "%r11d".to_string(),
         Operand::Stack(offset) => format!("-{offset}(%rbp)"),
         Operand::Imm(value) => format!("${}", value),
         Operand::Pseudo(_) => unreachable!(),
-        _ => todo!(),
     }
 }
 
