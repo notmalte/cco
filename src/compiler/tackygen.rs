@@ -44,10 +44,10 @@ impl TackyGen {
     ) -> tacky::Value {
         match expr {
             ast::Expression::Constant(value) => tacky::Value::Constant(*value),
-            ast::Expression::Unary(op, inner) => {
+            ast::Expression::Unary { op, expr: inner } => {
                 let src = self.handle_expression(ins, inner);
                 let dst = self.fresh_variable();
-                let op = Self::handle_unary_operator((*op).clone());
+                let op = Self::handle_unary_operator(op.clone());
 
                 ins.push(tacky::Instruction::Unary {
                     op,
@@ -57,7 +57,21 @@ impl TackyGen {
 
                 tacky::Value::Variable(dst)
             }
-            ast::Expression::Binary(_, _, _) => todo!(),
+            ast::Expression::Binary { op, lhs, rhs } => {
+                let lhs = self.handle_expression(ins, lhs);
+                let rhs = self.handle_expression(ins, rhs);
+                let dst = self.fresh_variable();
+                let op = Self::handle_binary_operator(op.clone());
+
+                ins.push(tacky::Instruction::Binary {
+                    op,
+                    lhs,
+                    rhs,
+                    dst: dst.clone(),
+                });
+
+                tacky::Value::Variable(dst)
+            }
         }
     }
 
@@ -65,6 +79,16 @@ impl TackyGen {
         match op {
             ast::UnaryOperator::Negate => tacky::UnaryOperator::Negate,
             ast::UnaryOperator::Complement => tacky::UnaryOperator::Complement,
+        }
+    }
+
+    fn handle_binary_operator(op: ast::BinaryOperator) -> tacky::BinaryOperator {
+        match op {
+            ast::BinaryOperator::Add => tacky::BinaryOperator::Add,
+            ast::BinaryOperator::Subtract => tacky::BinaryOperator::Subtract,
+            ast::BinaryOperator::Multiply => tacky::BinaryOperator::Multiply,
+            ast::BinaryOperator::Divide => tacky::BinaryOperator::Divide,
+            ast::BinaryOperator::Remainder => tacky::BinaryOperator::Remainder,
         }
     }
 }

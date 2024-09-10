@@ -45,6 +45,7 @@ fn handle_instructions(instructions: &[tacky::Instruction]) -> Vec<asm::Instruct
                 });
                 ins.push(asm::Instruction::Unary(handle_unary_operator(op), dst_asm));
             }
+            tacky::Instruction::Binary { op, lhs, rhs, dst } => todo!(),
         }
     }
 

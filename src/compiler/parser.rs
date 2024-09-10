@@ -89,7 +89,11 @@ fn parse_expression(
 
         let operator = parse_binary_operator(tokens)?;
         let right = parse_expression(tokens, precedence + 1)?;
-        left = Expression::Binary(operator, Box::new(left), Box::new(right));
+        left = Expression::Binary {
+            op: operator,
+            lhs: Box::new(left),
+            rhs: Box::new(right),
+        };
     }
     Ok(left)
 }
@@ -103,7 +107,10 @@ fn parse_factor(tokens: &mut VecDeque<Token>) -> Result<Expression, String> {
         Some(Token::Tilde | Token::Minus) => {
             let operator = parse_unary_operator(tokens)?;
             let inner = parse_factor(tokens)?;
-            Ok(Expression::Unary(operator, Box::new(inner)))
+            Ok(Expression::Unary {
+                op: operator,
+                expr: Box::new(inner),
+            })
         }
         Some(Token::OpenParen) => {
             tokens.pop_front();

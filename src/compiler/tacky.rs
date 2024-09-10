@@ -17,6 +17,12 @@ pub enum Instruction {
         src: Value,
         dst: Variable,
     },
+    Binary {
+        op: BinaryOperator,
+        lhs: Value,
+        rhs: Value,
+        dst: Variable,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -34,4 +40,13 @@ pub struct Variable {
 pub enum UnaryOperator {
     Complement,
     Negate,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum BinaryOperator {
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Remainder,
 }
