@@ -37,12 +37,11 @@ fn emit_instruction(instruction: &Instruction) -> String {
 \tpopq %rbp
 \tret"
             .to_string(),
-        Instruction::Unary(operator, operand) => format!(
-            "\t{} {}",
-            emit_unary_operator(operator),
-            emit_operand(operand)
-        ),
+        Instruction::Unary { op, dst } => {
+            format!("\t{} {}", emit_unary_operator(op), emit_operand(dst))
+        }
         Instruction::AllocateStack(size) => format!("\tsubq ${size}, %rsp"),
+        _ => todo!(),
     }
 }
 
@@ -60,6 +59,7 @@ fn emit_operand(operand: &Operand) -> String {
         Operand::Stack(offset) => format!("-{offset}(%rbp)"),
         Operand::Imm(value) => format!("${}", value),
         Operand::Pseudo(_) => unreachable!(),
+        _ => todo!(),
     }
 }
 

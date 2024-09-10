@@ -43,9 +43,51 @@ fn handle_instructions(instructions: &[tacky::Instruction]) -> Vec<asm::Instruct
                     src: handle_value(src),
                     dst: dst_asm.clone(),
                 });
-                ins.push(asm::Instruction::Unary(handle_unary_operator(op), dst_asm));
+                ins.push(asm::Instruction::Unary {
+                    op: handle_unary_operator(op),
+                    dst: dst_asm,
+                });
             }
-            tacky::Instruction::Binary { op, lhs, rhs, dst } => todo!(),
+            tacky::Instruction::Binary { op, lhs, rhs, dst } => match op {
+                tacky::BinaryOperator::Add
+                | tacky::BinaryOperator::Subtract
+                | tacky::BinaryOperator::Multiply => {
+                    let dst_asm = handle_variable(dst);
+                    ins.push(asm::Instruction::Mov {
+                        src: handle_value(lhs),
+                        dst: dst_asm.clone(),
+                    });
+                    ins.push(asm::Instruction::Binary {
+                        op: handle_binary_operator(op),
+                        src: handle_value(rhs),
+                        dst: dst_asm,
+                    });
+                }
+                tacky::BinaryOperator::Divide => {
+                    ins.push(asm::Instruction::Mov {
+                        src: handle_value(lhs),
+                        dst: asm::Operand::Reg(asm::Reg::AX),
+                    });
+                    ins.push(asm::Instruction::Cdq);
+                    ins.push(asm::Instruction::Idiv(handle_value(rhs)));
+                    ins.push(asm::Instruction::Mov {
+                        src: asm::Operand::Reg(asm::Reg::AX),
+                        dst: handle_variable(dst),
+                    });
+                }
+                tacky::BinaryOperator::Remainder => {
+                    ins.push(asm::Instruction::Mov {
+                        src: handle_value(lhs),
+                        dst: asm::Operand::Reg(asm::Reg::AX),
+                    });
+                    ins.push(asm::Instruction::Cdq);
+                    ins.push(asm::Instruction::Idiv(handle_value(rhs)));
+                    ins.push(asm::Instruction::Mov {
+                        src: asm::Operand::Reg(asm::Reg::DX),
+                        dst: handle_variable(dst),
+                    });
+                }
+            },
         }
     }
 
@@ -70,6 +112,15 @@ fn handle_unary_operator(op: &tacky::UnaryOperator) -> asm::UnaryOperator {
     }
 }
 
+fn handle_binary_operator(op: &tacky::BinaryOperator) -> asm::BinaryOperator {
+    match op {
+        tacky::BinaryOperator::Add => asm::BinaryOperator::Add,
+        tacky::BinaryOperator::Subtract => asm::BinaryOperator::Sub,
+        tacky::BinaryOperator::Multiply => asm::BinaryOperator::Mult,
+        _ => unreachable!(),
+    }
+}
+
 fn replace_pseudo_registers(program: &mut asm::Program) -> u64 {
     let mut map = HashMap::<String, u64>::new();
 
@@ -79,11 +130,18 @@ fn replace_pseudo_registers(program: &mut asm::Program) -> u64 {
                 replace_pseudo_registers_in_operand(src, &mut map);
                 replace_pseudo_registers_in_operand(dst, &mut map);
             }
-            asm::Instruction::Unary(_, operand) => {
+            asm::Instruction::Unary { op: _, dst } => {
+                replace_pseudo_registers_in_operand(dst, &mut map);
+            }
+            asm::Instruction::Binary { op: _, src, dst } => {
+                replace_pseudo_registers_in_operand(src, &mut map);
+                replace_pseudo_registers_in_operand(dst, &mut map);
+            }
+            asm::Instruction::Idiv(operand) => {
                 replace_pseudo_registers_in_operand(operand, &mut map);
             }
+            asm::Instruction::Ret | asm::Instruction::Cdq => {}
             asm::Instruction::AllocateStack(_) => unreachable!(),
-            asm::Instruction::Ret => {}
         }
     }
 
@@ -106,19 +164,60 @@ fn fix_up_instructions(program: &mut asm::Program, stack_size: u64) {
     for i in &program.function_definition.instructions {
         match i {
             asm::Instruction::Mov {
-                src: asm::Operand::Stack(src),
-                dst: asm::Operand::Stack(dst),
+                src: src @ asm::Operand::Stack(_),
+                dst: dst @ asm::Operand::Stack(_),
             } => {
                 ins.push(asm::Instruction::Mov {
-                    src: asm::Operand::Stack(*src),
+                    src: src.clone(),
                     dst: asm::Operand::Reg(asm::Reg::R10),
                 });
                 ins.push(asm::Instruction::Mov {
                     src: asm::Operand::Reg(asm::Reg::R10),
-                    dst: asm::Operand::Stack(*dst),
+                    dst: dst.clone(),
                 });
             }
-            x => ins.push(x.clone()),
+            asm::Instruction::Idiv(value @ asm::Operand::Imm(_)) => {
+                ins.push(asm::Instruction::Mov {
+                    src: value.clone(),
+                    dst: asm::Operand::Reg(asm::Reg::R10),
+                });
+                ins.push(asm::Instruction::Idiv(asm::Operand::Reg(asm::Reg::R10)));
+            }
+            asm::Instruction::Binary {
+                op: op @ (asm::BinaryOperator::Add | asm::BinaryOperator::Sub),
+                src: src @ asm::Operand::Stack(_),
+                dst: dst @ asm::Operand::Stack(_),
+            } => {
+                ins.push(asm::Instruction::Mov {
+                    src: src.clone(),
+                    dst: asm::Operand::Reg(asm::Reg::R10),
+                });
+                ins.push(asm::Instruction::Binary {
+                    op: op.clone(),
+                    src: asm::Operand::Reg(asm::Reg::R10),
+                    dst: dst.clone(),
+                });
+            }
+            asm::Instruction::Binary {
+                op: asm::BinaryOperator::Mult,
+                src,
+                dst: dst @ asm::Operand::Stack(_),
+            } => {
+                ins.push(asm::Instruction::Mov {
+                    src: dst.clone(),
+                    dst: asm::Operand::Reg(asm::Reg::R11),
+                });
+                ins.push(asm::Instruction::Binary {
+                    op: asm::BinaryOperator::Mult,
+                    src: src.clone(),
+                    dst: asm::Operand::Reg(asm::Reg::R11),
+                });
+                ins.push(asm::Instruction::Mov {
+                    src: asm::Operand::Reg(asm::Reg::R11),
+                    dst: dst.clone(),
+                });
+            }
+            i => ins.push(i.clone()),
         }
     }
 
