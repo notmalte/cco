@@ -26,6 +26,8 @@ pub enum Instruction {
     },
     Idiv(Operand),
     Cdq,
+    Sal(Operand),
+    Sar(Operand),
     AllocateStack(u64),
     Ret,
 }
@@ -41,11 +43,14 @@ pub enum BinaryOperator {
     Add,
     Sub,
     Mult,
+    And,
+    Or,
+    Xor,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Operand {
-    Imm(u64),
+    Imm(i64),
     Reg(Reg),
     Pseudo(String),
     Stack(u64),
@@ -54,6 +59,7 @@ pub enum Operand {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Reg {
     AX,
+    CX,
     DX,
     R10,
     R11,

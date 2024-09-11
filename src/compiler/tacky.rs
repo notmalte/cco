@@ -27,7 +27,7 @@ pub enum Instruction {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
-    Constant(u64),
+    Constant(i64),
     Variable(Variable),
 }
 
@@ -49,4 +49,9 @@ pub enum BinaryOperator {
     Multiply,
     Divide,
     Remainder,
+    BitwiseAnd,
+    BitwiseOr,
+    BitwiseXor,
+    ShiftLeft,
+    ShiftRight,
 }

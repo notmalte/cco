@@ -78,8 +78,12 @@ fn parse_expression(
     let mut left = parse_factor(tokens)?;
     while let Some(t) = tokens.front().cloned() {
         let precedence = match t {
-            Token::Plus | Token::Minus => 1,
-            Token::Asterisk | Token::Slash | Token::Percent => 2,
+            Token::Pipe => 1,
+            Token::Caret => 2,
+            Token::Ampersand => 3,
+            Token::LessLess | Token::GreaterGreater => 4,
+            Token::Plus | Token::Minus => 5,
+            Token::Asterisk | Token::Slash | Token::Percent => 6,
             _ => break,
         };
 
@@ -139,6 +143,11 @@ fn parse_binary_operator(tokens: &mut VecDeque<Token>) -> Result<BinaryOperator,
         Some(Token::Asterisk) => Ok(BinaryOperator::Multiply),
         Some(Token::Slash) => Ok(BinaryOperator::Divide),
         Some(Token::Percent) => Ok(BinaryOperator::Remainder),
+        Some(Token::Ampersand) => Ok(BinaryOperator::BitwiseAnd),
+        Some(Token::Pipe) => Ok(BinaryOperator::BitwiseOr),
+        Some(Token::Caret) => Ok(BinaryOperator::BitwiseXor),
+        Some(Token::LessLess) => Ok(BinaryOperator::ShiftLeft),
+        Some(Token::GreaterGreater) => Ok(BinaryOperator::ShiftRight),
         _ => Err("Expected binary operator".to_string()),
     }
 }

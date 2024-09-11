@@ -19,10 +19,10 @@ fn emit_function(function: Function) -> String {
         .join("\n");
 
     format!(
-        "\t.globl {prefixed}
+        "\t.globl\t{prefixed}
 {prefixed}:
-\tpushq %rbp
-\tmovq %rsp, %rbp
+\tpushq\t%rbp
+\tmovq\t%rsp, %rbp
 {instructions}
 "
     )
@@ -31,26 +31,28 @@ fn emit_function(function: Function) -> String {
 fn emit_instruction(instruction: &Instruction) -> String {
     match instruction {
         Instruction::Mov { src, dst } => {
-            format!("\tmovl {}, {}", emit_operand(src), emit_operand(dst))
+            format!("\tmovl\t{}, {}", emit_operand(src), emit_operand(dst))
         }
-        Instruction::Ret => "\tmovq %rbp, %rsp
-\tpopq %rbp
+        Instruction::Ret => "\tmovq\t%rbp, %rsp
+\tpopq\t%rbp
 \tret"
             .to_string(),
         Instruction::Unary { op, dst } => {
-            format!("\t{} {}", emit_unary_operator(op), emit_operand(dst))
+            format!("\t{}\t{}", emit_unary_operator(op), emit_operand(dst))
         }
         Instruction::Binary { op, src, dst } => {
             format!(
-                "\t{} {}, {}",
+                "\t{}\t{}, {}",
                 emit_binary_operator(op),
                 emit_operand(src),
                 emit_operand(dst)
             )
         }
-        Instruction::Idiv(operand) => format!("\tidivl {}", emit_operand(operand)),
+        Instruction::Idiv(operand) => format!("\tidivl\t{}", emit_operand(operand)),
         Instruction::Cdq => "\tcdq".to_string(),
-        Instruction::AllocateStack(size) => format!("\tsubq ${size}, %rsp"),
+        Instruction::Sal(operand) => format!("\tsall\t%cl, {}", emit_operand(operand)),
+        Instruction::Sar(operand) => format!("\tsarl\t%cl, {}", emit_operand(operand)),
+        Instruction::AllocateStack(size) => format!("\tsubq\t${size}, %rsp"),
     }
 }
 
@@ -66,12 +68,16 @@ fn emit_binary_operator(operator: &BinaryOperator) -> String {
         BinaryOperator::Add => "addl".to_string(),
         BinaryOperator::Sub => "subl".to_string(),
         BinaryOperator::Mult => "imull".to_string(),
+        BinaryOperator::And => "andl".to_string(),
+        BinaryOperator::Or => "orl\t".to_string(),
+        BinaryOperator::Xor => "xorl".to_string(),
     }
 }
 
 fn emit_operand(operand: &Operand) -> String {
     match operand {
         Operand::Reg(Reg::AX) => "%eax".to_string(),
+        Operand::Reg(Reg::CX) => "%ecx".to_string(),
         Operand::Reg(Reg::DX) => "%edx".to_string(),
         Operand::Reg(Reg::R10) => "%r10d".to_string(),
         Operand::Reg(Reg::R11) => "%r11d".to_string(),
@@ -100,13 +106,13 @@ mod tests {
             },
         };
 
-        let expected = "\t.globl _main
+        let expected = "\t.globl\t_main
 _main:
-\tpushq %rbp
-\tmovq %rsp, %rbp
-\tmovl $42, %eax
-\tmovq %rbp, %rsp
-\tpopq %rbp
+\tpushq\t%rbp
+\tmovq\t%rsp, %rbp
+\tmovl\t$42, %eax
+\tmovq\t%rbp, %rsp
+\tpopq\t%rbp
 \tret
 ";
 

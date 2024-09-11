@@ -51,7 +51,10 @@ fn handle_instructions(instructions: &[tacky::Instruction]) -> Vec<asm::Instruct
             tacky::Instruction::Binary { op, lhs, rhs, dst } => match op {
                 tacky::BinaryOperator::Add
                 | tacky::BinaryOperator::Subtract
-                | tacky::BinaryOperator::Multiply => {
+                | tacky::BinaryOperator::Multiply
+                | tacky::BinaryOperator::BitwiseAnd
+                | tacky::BinaryOperator::BitwiseOr
+                | tacky::BinaryOperator::BitwiseXor => {
                     let dst_asm = handle_variable(dst);
                     ins.push(asm::Instruction::Mov {
                         src: handle_value(lhs),
@@ -87,6 +90,22 @@ fn handle_instructions(instructions: &[tacky::Instruction]) -> Vec<asm::Instruct
                         dst: handle_variable(dst),
                     });
                 }
+                tacky::BinaryOperator::ShiftLeft | tacky::BinaryOperator::ShiftRight => {
+                    let dst_asm = handle_variable(dst);
+                    ins.push(asm::Instruction::Mov {
+                        src: handle_value(lhs),
+                        dst: dst_asm.clone(),
+                    });
+                    ins.push(asm::Instruction::Mov {
+                        src: handle_value(rhs),
+                        dst: asm::Operand::Reg(asm::Reg::CX).clone(),
+                    });
+                    ins.push(match op {
+                        tacky::BinaryOperator::ShiftLeft => asm::Instruction::Sal(dst_asm),
+                        tacky::BinaryOperator::ShiftRight => asm::Instruction::Sar(dst_asm),
+                        _ => unreachable!(),
+                    });
+                }
             },
         }
     }
@@ -117,6 +136,9 @@ fn handle_binary_operator(op: &tacky::BinaryOperator) -> asm::BinaryOperator {
         tacky::BinaryOperator::Add => asm::BinaryOperator::Add,
         tacky::BinaryOperator::Subtract => asm::BinaryOperator::Sub,
         tacky::BinaryOperator::Multiply => asm::BinaryOperator::Mult,
+        tacky::BinaryOperator::BitwiseAnd => asm::BinaryOperator::And,
+        tacky::BinaryOperator::BitwiseOr => asm::BinaryOperator::Or,
+        tacky::BinaryOperator::BitwiseXor => asm::BinaryOperator::Xor,
         _ => unreachable!(),
     }
 }
@@ -138,6 +160,9 @@ fn replace_pseudo_registers(program: &mut asm::Program) -> u64 {
                 replace_pseudo_registers_in_operand(dst, &mut map);
             }
             asm::Instruction::Idiv(operand) => {
+                replace_pseudo_registers_in_operand(operand, &mut map);
+            }
+            asm::Instruction::Sal(operand) | asm::Instruction::Sar(operand) => {
                 replace_pseudo_registers_in_operand(operand, &mut map);
             }
             asm::Instruction::Ret | asm::Instruction::Cdq => {}
@@ -184,7 +209,12 @@ fn fix_up_instructions(program: &mut asm::Program, stack_size: u64) {
                 ins.push(asm::Instruction::Idiv(asm::Operand::Reg(asm::Reg::R10)));
             }
             asm::Instruction::Binary {
-                op: op @ (asm::BinaryOperator::Add | asm::BinaryOperator::Sub),
+                op:
+                    op @ (asm::BinaryOperator::Add
+                    | asm::BinaryOperator::Sub
+                    | asm::BinaryOperator::And
+                    | asm::BinaryOperator::Or
+                    | asm::BinaryOperator::Xor),
                 src: src @ asm::Operand::Stack(_),
                 dst: dst @ asm::Operand::Stack(_),
             } => {

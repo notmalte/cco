@@ -89,6 +89,11 @@ impl TackyGen {
             ast::BinaryOperator::Multiply => tacky::BinaryOperator::Multiply,
             ast::BinaryOperator::Divide => tacky::BinaryOperator::Divide,
             ast::BinaryOperator::Remainder => tacky::BinaryOperator::Remainder,
+            ast::BinaryOperator::BitwiseAnd => tacky::BinaryOperator::BitwiseAnd,
+            ast::BinaryOperator::BitwiseOr => tacky::BinaryOperator::BitwiseOr,
+            ast::BinaryOperator::BitwiseXor => tacky::BinaryOperator::BitwiseXor,
+            ast::BinaryOperator::ShiftLeft => tacky::BinaryOperator::ShiftLeft,
+            ast::BinaryOperator::ShiftRight => tacky::BinaryOperator::ShiftRight,
         }
     }
 }

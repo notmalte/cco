@@ -16,7 +16,7 @@ pub enum Statement {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
-    Constant(u64),
+    Constant(i64),
     Unary {
         op: UnaryOperator,
         expr: Box<Expression>,
@@ -41,4 +41,9 @@ pub enum BinaryOperator {
     Multiply,
     Divide,
     Remainder,
+    BitwiseAnd,
+    BitwiseOr,
+    BitwiseXor,
+    ShiftLeft,
+    ShiftRight,
 }

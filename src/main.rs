@@ -39,7 +39,7 @@ struct Args {
         long,
         group = "stage",
         conflicts_with = "assembly",
-        help = "Only run the lexer, parser, tacky generator, and code generator but do not emit assembly"
+        help = "Only run the lexer, parser, tacky generator, and code generator"
     )]
     codegen: bool,
 

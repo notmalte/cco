@@ -11,8 +11,18 @@ pub enum Token {
     ReturnKeyword,
 
     /// e.g. `42`
-    Constant(u64),
+    Constant(i64),
 
+    /// `(`
+    OpenParen,
+    /// `)`
+    CloseParen,
+    /// `{`
+    OpenBrace,
+    /// `}`
+    CloseBrace,
+    /// `;`
+    Semicolon,
     /// `~`
     Tilde,
     /// `-`
@@ -25,18 +35,17 @@ pub enum Token {
     Slash,
     /// `%`
     Percent,
+    /// `&`
+    Ampersand,
+    /// `|`
+    Pipe,
+    /// `^`
+    Caret,
 
     /// `--`
     MinusMinus,
-
-    /// `(`
-    OpenParen,
-    /// `)`
-    CloseParen,
-    /// `{`
-    OpenBrace,
-    /// `}`
-    CloseBrace,
-    /// `;`
-    Semicolon,
+    /// `<<`
+    LessLess,
+    /// `>>`
+    GreaterGreater,
 }

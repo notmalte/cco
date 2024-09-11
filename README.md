@@ -13,7 +13,8 @@ Arguments:
 Options:
       --lex       Only run the lexer
       --parse     Only run the lexer and parser
-      --codegen   Only run the lexer, parser, and code generator, but stop before emitting assembly
+      --tacky     Only run the lexer, parser, and tacky generator
+      --codegen   Only run the lexer, parser, tacky generator, and code generator
   -S, --assembly  Emit assembly code, but do not link
   -h, --help      Print help
   -V, --version   Print version

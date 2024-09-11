@@ -32,17 +32,22 @@ fn find_first_token(s: &str) -> Option<(Token, &str)> {
 
     let tokens = [
         ("--", Token::MinusMinus),
+        ("<<", Token::LessLess),
+        (">>", Token::GreaterGreater),
+        ("(", Token::OpenParen),
+        (")", Token::CloseParen),
+        ("{", Token::OpenBrace),
+        ("}", Token::CloseBrace),
+        (";", Token::Semicolon),
         ("~", Token::Tilde),
         ("-", Token::Minus),
         ("+", Token::Plus),
         ("*", Token::Asterisk),
         ("/", Token::Slash),
         ("%", Token::Percent),
-        ("(", Token::OpenParen),
-        (")", Token::CloseParen),
-        ("{", Token::OpenBrace),
-        ("}", Token::CloseBrace),
-        (";", Token::Semicolon),
+        ("&", Token::Ampersand),
+        ("|", Token::Pipe),
+        ("^", Token::Caret),
     ];
 
     tokens
