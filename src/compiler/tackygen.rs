@@ -79,6 +79,7 @@ impl TackyGen {
         match op {
             ast::UnaryOperator::Negate => tacky::UnaryOperator::Negate,
             ast::UnaryOperator::Complement => tacky::UnaryOperator::Complement,
+            _ => todo!(),
         }
     }
 
@@ -94,6 +95,7 @@ impl TackyGen {
             ast::BinaryOperator::BitwiseXor => tacky::BinaryOperator::BitwiseXor,
             ast::BinaryOperator::ShiftLeft => tacky::BinaryOperator::ShiftLeft,
             ast::BinaryOperator::ShiftRight => tacky::BinaryOperator::ShiftRight,
+            _ => todo!(),
         }
     }
 }

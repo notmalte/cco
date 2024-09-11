@@ -34,6 +34,12 @@ fn find_first_token(s: &str) -> Option<(Token, &str)> {
         ("--", Token::MinusMinus),
         ("<<", Token::LessLess),
         (">>", Token::GreaterGreater),
+        ("&&", Token::AmpersandAmpersand),
+        ("||", Token::PipePipe),
+        ("==", Token::EqualEqual),
+        ("!=", Token::ExclamationEqual),
+        ("<=", Token::LessEqual),
+        (">=", Token::GreaterEqual),
         ("(", Token::OpenParen),
         (")", Token::CloseParen),
         ("{", Token::OpenBrace),
@@ -48,6 +54,9 @@ fn find_first_token(s: &str) -> Option<(Token, &str)> {
         ("&", Token::Ampersand),
         ("|", Token::Pipe),
         ("^", Token::Caret),
+        ("!", Token::Exclamation),
+        ("<", Token::Less),
+        (">", Token::Greater),
     ];
 
     tokens

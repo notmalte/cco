@@ -78,12 +78,16 @@ fn parse_expression(
     let mut left = parse_factor(tokens)?;
     while let Some(t) = tokens.front().cloned() {
         let precedence = match t {
-            Token::Pipe => 1,
-            Token::Caret => 2,
-            Token::Ampersand => 3,
-            Token::LessLess | Token::GreaterGreater => 4,
-            Token::Plus | Token::Minus => 5,
-            Token::Asterisk | Token::Slash | Token::Percent => 6,
+            Token::PipePipe => 1,
+            Token::AmpersandAmpersand => 2,
+            Token::Pipe => 3,
+            Token::Caret => 4,
+            Token::Ampersand => 5,
+            Token::EqualEqual | Token::ExclamationEqual => 6,
+            Token::Less | Token::LessEqual | Token::Greater | Token::GreaterEqual => 7,
+            Token::LessLess | Token::GreaterGreater => 8,
+            Token::Plus | Token::Minus => 9,
+            Token::Asterisk | Token::Slash | Token::Percent => 10,
             _ => break,
         };
 
@@ -108,7 +112,7 @@ fn parse_factor(tokens: &mut VecDeque<Token>) -> Result<Expression, String> {
             tokens.pop_front();
             Ok(Expression::Constant(value))
         }
-        Some(Token::Tilde | Token::Minus) => {
+        Some(Token::Tilde | Token::Minus | Token::Exclamation) => {
             let operator = parse_unary_operator(tokens)?;
             let inner = parse_factor(tokens)?;
             Ok(Expression::Unary {
@@ -132,6 +136,7 @@ fn parse_unary_operator(tokens: &mut VecDeque<Token>) -> Result<UnaryOperator, S
     match tokens.pop_front() {
         Some(Token::Tilde) => Ok(UnaryOperator::Complement),
         Some(Token::Minus) => Ok(UnaryOperator::Negate),
+        Some(Token::Exclamation) => Ok(UnaryOperator::Not),
         _ => Err("Expected unary operator".to_string()),
     }
 }
@@ -148,6 +153,14 @@ fn parse_binary_operator(tokens: &mut VecDeque<Token>) -> Result<BinaryOperator,
         Some(Token::Caret) => Ok(BinaryOperator::BitwiseXor),
         Some(Token::LessLess) => Ok(BinaryOperator::ShiftLeft),
         Some(Token::GreaterGreater) => Ok(BinaryOperator::ShiftRight),
+        Some(Token::AmpersandAmpersand) => Ok(BinaryOperator::LogicalAnd),
+        Some(Token::PipePipe) => Ok(BinaryOperator::LogicalOr),
+        Some(Token::EqualEqual) => Ok(BinaryOperator::Equal),
+        Some(Token::ExclamationEqual) => Ok(BinaryOperator::NotEqual),
+        Some(Token::Less) => Ok(BinaryOperator::LessThan),
+        Some(Token::LessEqual) => Ok(BinaryOperator::LessOrEqual),
+        Some(Token::Greater) => Ok(BinaryOperator::GreaterThan),
+        Some(Token::GreaterEqual) => Ok(BinaryOperator::GreaterOrEqual),
         _ => Err("Expected binary operator".to_string()),
     }
 }

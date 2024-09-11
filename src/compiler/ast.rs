@@ -32,6 +32,7 @@ pub enum Expression {
 pub enum UnaryOperator {
     Complement,
     Negate,
+    Not,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -46,4 +47,12 @@ pub enum BinaryOperator {
     BitwiseXor,
     ShiftLeft,
     ShiftRight,
+    LogicalAnd,
+    LogicalOr,
+    Equal,
+    NotEqual,
+    LessThan,
+    LessOrEqual,
+    GreaterThan,
+    GreaterOrEqual,
 }

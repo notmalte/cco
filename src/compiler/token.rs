@@ -41,6 +41,12 @@ pub enum Token {
     Pipe,
     /// `^`
     Caret,
+    /// `!`
+    Exclamation,
+    /// `<`
+    Less,
+    /// `>`
+    Greater,
 
     /// `--`
     MinusMinus,
@@ -48,4 +54,16 @@ pub enum Token {
     LessLess,
     /// `>>`
     GreaterGreater,
+    /// `&&`
+    AmpersandAmpersand,
+    /// `||`
+    PipePipe,
+    /// `==`
+    EqualEqual,
+    /// `!=`
+    ExclamationEqual,
+    /// `<=`
+    LessEqual,
+    /// `>=`
+    GreaterEqual,
 }
