@@ -1,15 +1,33 @@
 use super::{ast, tacky};
 
 pub struct TackyGen {
-    counter: usize,
+    variable_counter: usize,
+    label_counter: usize,
 }
 
 impl TackyGen {
+    fn new() -> Self {
+        Self {
+            variable_counter: 0,
+            label_counter: 0,
+        }
+    }
+
     fn fresh_variable(&mut self) -> tacky::Variable {
-        let name = format!("tmp.{}", self.counter);
-        self.counter += 1;
+        let name = format!("var.{}", self.variable_counter);
+        self.variable_counter += 1;
 
         tacky::Variable { identifier: name }
+    }
+
+    fn fresh_label(&mut self, suffix: Option<&str>) -> tacky::Label {
+        let name = match suffix {
+            Some(suffix) => format!("label.{}.{}", self.label_counter, suffix),
+            None => format!("label.{}", self.label_counter),
+        };
+        self.label_counter += 1;
+
+        tacky::Label { identifier: name }
     }
 
     fn handle_program(&mut self, program: &ast::Program) -> tacky::Program {
@@ -57,21 +75,97 @@ impl TackyGen {
 
                 tacky::Value::Variable(dst)
             }
-            ast::Expression::Binary { op, lhs, rhs } => {
-                let lhs = self.handle_expression(ins, lhs);
-                let rhs = self.handle_expression(ins, rhs);
-                let dst = self.fresh_variable();
-                let op = Self::handle_binary_operator(op.clone());
+            ast::Expression::Binary { op, lhs, rhs } => match op {
+                ast::BinaryOperator::LogicalAnd => {
+                    let dst = self.fresh_variable();
 
-                ins.push(tacky::Instruction::Binary {
-                    op,
-                    lhs,
-                    rhs,
-                    dst: dst.clone(),
-                });
+                    let label_false = self.fresh_label(Some("and_false"));
+                    let label_end = self.fresh_label(Some("and_end"));
 
-                tacky::Value::Variable(dst)
-            }
+                    let lhs = self.handle_expression(ins, lhs);
+                    ins.push(tacky::Instruction::JumpIfZero {
+                        condition: lhs,
+                        target: label_false.clone(),
+                    });
+
+                    let rhs = self.handle_expression(ins, rhs);
+                    ins.push(tacky::Instruction::JumpIfZero {
+                        condition: rhs,
+                        target: label_false.clone(),
+                    });
+
+                    ins.push(tacky::Instruction::Copy {
+                        src: tacky::Value::Constant(1),
+                        dst: dst.clone(),
+                    });
+                    ins.push(tacky::Instruction::Jump {
+                        target: label_end.clone(),
+                    });
+
+                    ins.push(tacky::Instruction::Label(label_false));
+
+                    ins.push(tacky::Instruction::Copy {
+                        src: tacky::Value::Constant(0),
+                        dst: dst.clone(),
+                    });
+
+                    ins.push(tacky::Instruction::Label(label_end));
+
+                    tacky::Value::Variable(dst)
+                }
+                ast::BinaryOperator::LogicalOr => {
+                    let dst = self.fresh_variable();
+
+                    let label_true = self.fresh_label(Some("or_true"));
+                    let label_end = self.fresh_label(Some("or_end"));
+
+                    let lhs = self.handle_expression(ins, lhs);
+                    ins.push(tacky::Instruction::JumpIfNotZero {
+                        condition: lhs,
+                        target: label_true.clone(),
+                    });
+
+                    let rhs = self.handle_expression(ins, rhs);
+                    ins.push(tacky::Instruction::JumpIfNotZero {
+                        condition: rhs,
+                        target: label_true.clone(),
+                    });
+
+                    ins.push(tacky::Instruction::Copy {
+                        src: tacky::Value::Constant(0),
+                        dst: dst.clone(),
+                    });
+                    ins.push(tacky::Instruction::Jump {
+                        target: label_end.clone(),
+                    });
+
+                    ins.push(tacky::Instruction::Label(label_true));
+
+                    ins.push(tacky::Instruction::Copy {
+                        src: tacky::Value::Constant(1),
+                        dst: dst.clone(),
+                    });
+
+                    ins.push(tacky::Instruction::Label(label_end));
+
+                    tacky::Value::Variable(dst)
+                }
+                _ => {
+                    let lhs = self.handle_expression(ins, lhs);
+                    let rhs = self.handle_expression(ins, rhs);
+                    let dst = self.fresh_variable();
+                    let op = Self::handle_binary_operator(op.clone());
+
+                    ins.push(tacky::Instruction::Binary {
+                        op,
+                        lhs,
+                        rhs,
+                        dst: dst.clone(),
+                    });
+
+                    tacky::Value::Variable(dst)
+                }
+            },
         }
     }
 
@@ -79,7 +173,7 @@ impl TackyGen {
         match op {
             ast::UnaryOperator::Negate => tacky::UnaryOperator::Negate,
             ast::UnaryOperator::Complement => tacky::UnaryOperator::Complement,
-            _ => todo!(),
+            ast::UnaryOperator::Not => tacky::UnaryOperator::Not,
         }
     }
 
@@ -95,13 +189,17 @@ impl TackyGen {
             ast::BinaryOperator::BitwiseXor => tacky::BinaryOperator::BitwiseXor,
             ast::BinaryOperator::ShiftLeft => tacky::BinaryOperator::ShiftLeft,
             ast::BinaryOperator::ShiftRight => tacky::BinaryOperator::ShiftRight,
-            _ => todo!(),
+            ast::BinaryOperator::Equal => tacky::BinaryOperator::Equal,
+            ast::BinaryOperator::NotEqual => tacky::BinaryOperator::NotEqual,
+            ast::BinaryOperator::LessThan => tacky::BinaryOperator::LessThan,
+            ast::BinaryOperator::LessOrEqual => tacky::BinaryOperator::LessOrEqual,
+            ast::BinaryOperator::GreaterThan => tacky::BinaryOperator::GreaterThan,
+            ast::BinaryOperator::GreaterOrEqual => tacky::BinaryOperator::GreaterOrEqual,
+            ast::BinaryOperator::LogicalAnd | ast::BinaryOperator::LogicalOr => unreachable!(),
         }
     }
 }
 
 pub fn generate(program: &ast::Program) -> tacky::Program {
-    let mut tg = TackyGen { counter: 0 };
-
-    tg.handle_program(program)
+    (TackyGen::new()).handle_program(program)
 }

@@ -24,10 +24,26 @@ pub enum Instruction {
         src: Operand,
         dst: Operand,
     },
+    Cmp {
+        src: Operand,
+        dst: Operand,
+    },
     Idiv(Operand),
     Cdq,
     Sal(Operand),
     Sar(Operand),
+    Jmp {
+        target: Label,
+    },
+    JmpCC {
+        cc: ConditionCode,
+        target: Label,
+    },
+    SetCC {
+        cc: ConditionCode,
+        dst: Operand,
+    },
+    Label(Label),
     AllocateStack(u64),
     Ret,
 }
@@ -54,6 +70,21 @@ pub enum Operand {
     Reg(Reg),
     Pseudo(String),
     Stack(u64),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Label {
+    pub identifier: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ConditionCode {
+    E,
+    NE,
+    G,
+    GE,
+    L,
+    LE,
 }
 
 #[derive(Debug, Clone, PartialEq)]

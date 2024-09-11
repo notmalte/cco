@@ -23,6 +23,22 @@ pub enum Instruction {
         rhs: Value,
         dst: Variable,
     },
+    Copy {
+        src: Value,
+        dst: Variable,
+    },
+    Jump {
+        target: Label,
+    },
+    JumpIfZero {
+        condition: Value,
+        target: Label,
+    },
+    JumpIfNotZero {
+        condition: Value,
+        target: Label,
+    },
+    Label(Label),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -37,9 +53,15 @@ pub struct Variable {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct Label {
+    pub identifier: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum UnaryOperator {
     Complement,
     Negate,
+    Not,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -54,4 +76,10 @@ pub enum BinaryOperator {
     BitwiseXor,
     ShiftLeft,
     ShiftRight,
+    Equal,
+    NotEqual,
+    LessThan,
+    LessOrEqual,
+    GreaterThan,
+    GreaterOrEqual,
 }

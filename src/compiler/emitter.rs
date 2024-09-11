@@ -1,4 +1,7 @@
-use super::asm::{BinaryOperator, Function, Instruction, Operand, Program, Reg, UnaryOperator};
+use super::asm::{
+    BinaryOperator, ConditionCode, Function, Instruction, Label, Operand, Program, Reg,
+    UnaryOperator,
+};
 
 pub fn emit(program: Program) -> String {
     emit_program(program)
@@ -31,28 +34,61 @@ fn emit_function(function: Function) -> String {
 fn emit_instruction(instruction: &Instruction) -> String {
     match instruction {
         Instruction::Mov { src, dst } => {
-            format!("\tmovl\t{}, {}", emit_operand(src), emit_operand(dst))
+            format!(
+                "\tmovl\t{}, {}",
+                emit_operand(src, RegSize::FourBytes),
+                emit_operand(dst, RegSize::FourBytes)
+            )
         }
-        Instruction::Ret => "\tmovq\t%rbp, %rsp
-\tpopq\t%rbp
-\tret"
-            .to_string(),
         Instruction::Unary { op, dst } => {
-            format!("\t{}\t{}", emit_unary_operator(op), emit_operand(dst))
+            format!(
+                "\t{}\t{}",
+                emit_unary_operator(op),
+                emit_operand(dst, RegSize::FourBytes)
+            )
         }
         Instruction::Binary { op, src, dst } => {
             format!(
                 "\t{}\t{}, {}",
                 emit_binary_operator(op),
-                emit_operand(src),
-                emit_operand(dst)
+                emit_operand(src, RegSize::FourBytes),
+                emit_operand(dst, RegSize::FourBytes)
             )
         }
-        Instruction::Idiv(operand) => format!("\tidivl\t{}", emit_operand(operand)),
+        Instruction::Cmp { src, dst } => {
+            format!(
+                "\tcmpl\t{}, {}",
+                emit_operand(src, RegSize::FourBytes),
+                emit_operand(dst, RegSize::FourBytes)
+            )
+        }
+        Instruction::Idiv(operand) => {
+            format!("\tidivl\t{}", emit_operand(operand, RegSize::FourBytes))
+        }
         Instruction::Cdq => "\tcdq".to_string(),
-        Instruction::Sal(operand) => format!("\tsall\t%cl, {}", emit_operand(operand)),
-        Instruction::Sar(operand) => format!("\tsarl\t%cl, {}", emit_operand(operand)),
+        Instruction::Sal(operand) => {
+            format!("\tsall\t%cl, {}", emit_operand(operand, RegSize::FourBytes))
+        }
+        Instruction::Sar(operand) => {
+            format!("\tsarl\t%cl, {}", emit_operand(operand, RegSize::FourBytes))
+        }
+        Instruction::Jmp { target } => format!("\tjmp\t\t{}", emit_label(target)),
+        Instruction::JmpCC { cc, target } => {
+            format!("\tj{}\t{}", emit_condition_code(cc), emit_label(target))
+        }
+        Instruction::SetCC { cc, dst } => {
+            format!(
+                "\tset{}\t{}",
+                emit_condition_code(cc),
+                emit_operand(dst, RegSize::OneByte)
+            )
+        }
+        Instruction::Label(label) => format!("{}:", emit_label(label)),
         Instruction::AllocateStack(size) => format!("\tsubq\t${size}, %rsp"),
+        Instruction::Ret => "\tmovq\t%rbp, %rsp
+\tpopq\t%rbp
+\tret"
+            .to_string(),
     }
 }
 
@@ -74,16 +110,49 @@ fn emit_binary_operator(operator: &BinaryOperator) -> String {
     }
 }
 
-fn emit_operand(operand: &Operand) -> String {
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum RegSize {
+    OneByte,
+    FourBytes,
+}
+
+fn emit_operand(operand: &Operand, size: RegSize) -> String {
     match operand {
-        Operand::Reg(Reg::AX) => "%eax".to_string(),
-        Operand::Reg(Reg::CX) => "%ecx".to_string(),
-        Operand::Reg(Reg::DX) => "%edx".to_string(),
-        Operand::Reg(Reg::R10) => "%r10d".to_string(),
-        Operand::Reg(Reg::R11) => "%r11d".to_string(),
+        Operand::Reg(reg) => match size {
+            RegSize::OneByte => match reg {
+                Reg::AX => "%al",
+                Reg::CX => "%cl",
+                Reg::DX => "%dl",
+                Reg::R10 => "%r10b",
+                Reg::R11 => "%r11b",
+            },
+            RegSize::FourBytes => match reg {
+                Reg::AX => "%eax",
+                Reg::CX => "%ecx",
+                Reg::DX => "%edx",
+                Reg::R10 => "%r10d",
+                Reg::R11 => "%r11d",
+            },
+        }
+        .to_string(),
         Operand::Stack(offset) => format!("-{offset}(%rbp)"),
         Operand::Imm(value) => format!("${}", value),
         Operand::Pseudo(_) => unreachable!(),
+    }
+}
+
+fn emit_label(label: &Label) -> String {
+    format!("L{}", label.identifier)
+}
+
+fn emit_condition_code(cc: &ConditionCode) -> String {
+    match cc {
+        ConditionCode::E => "e".to_string(),
+        ConditionCode::NE => "ne".to_string(),
+        ConditionCode::L => "l".to_string(),
+        ConditionCode::LE => "le".to_string(),
+        ConditionCode::G => "g".to_string(),
+        ConditionCode::GE => "ge".to_string(),
     }
 }
 
