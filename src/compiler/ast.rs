@@ -6,17 +6,32 @@ pub struct Program {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Function {
     pub name: String,
-    pub body: Statement,
+    pub body: Vec<BlockItem>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum BlockItem {
+    Statement(Statement),
+    Declaration(Declaration),
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
     Return(Expression),
+    Expression(Expression),
+    Null,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Declaration {
+    pub variable: Variable,
+    pub initializer: Option<Expression>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
     Constant(i64),
+    Variable(Variable),
     Unary {
         op: UnaryOperator,
         expr: Box<Expression>,
@@ -26,16 +41,20 @@ pub enum Expression {
         lhs: Box<Expression>,
         rhs: Box<Expression>,
     },
+    Assignment {
+        lhs: Box<Expression>,
+        rhs: Box<Expression>,
+    },
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum UnaryOperator {
     Complement,
     Negate,
     Not,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BinaryOperator {
     Add,
     Subtract,
@@ -55,4 +74,9 @@ pub enum BinaryOperator {
     LessOrEqual,
     GreaterThan,
     GreaterOrEqual,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Variable {
+    pub identifier: String,
 }

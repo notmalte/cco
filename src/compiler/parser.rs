@@ -1,7 +1,10 @@
 use std::collections::VecDeque;
 
 use super::{
-    ast::{BinaryOperator, Expression, Function, Program, Statement, UnaryOperator},
+    ast::{
+        BinaryOperator, BlockItem, Declaration, Expression, Function, Program, Statement,
+        UnaryOperator, Variable,
+    },
     token::Token,
 };
 
@@ -48,7 +51,15 @@ fn parse_function(tokens: &mut VecDeque<Token>) -> Result<Function, String> {
         return Err("Expected open brace".to_string());
     };
 
-    let body = parse_statement(tokens)?;
+    let mut body = vec![];
+
+    while let Some(t) = tokens.front() {
+        if t == &Token::CloseBrace {
+            break;
+        }
+
+        body.push(parse_block_item(tokens)?);
+    }
 
     let Some(Token::CloseBrace) = tokens.pop_front() else {
         return Err("Expected close brace".to_string());
@@ -57,7 +68,66 @@ fn parse_function(tokens: &mut VecDeque<Token>) -> Result<Function, String> {
     Ok(Function { name, body })
 }
 
+fn parse_block_item(tokens: &mut VecDeque<Token>) -> Result<BlockItem, String> {
+    if let Some(Token::IntKeyword) = tokens.front() {
+        parse_declaration(tokens).map(BlockItem::Declaration)
+    } else {
+        parse_statement(tokens).map(BlockItem::Statement)
+    }
+}
+
+fn parse_declaration(tokens: &mut VecDeque<Token>) -> Result<Declaration, String> {
+    let Some(Token::IntKeyword) = tokens.pop_front() else {
+        return Err("Expected int keyword".to_string());
+    };
+
+    let Some(Token::Identifier(identifier)) = tokens.pop_front() else {
+        return Err("Expected identifier".to_string());
+    };
+
+    let variable = Variable { identifier };
+
+    if let Some(Token::Equal) = tokens.front() {
+        tokens.pop_front();
+        let expression = parse_expression(tokens, 0)?;
+
+        let Some(Token::Semicolon) = tokens.pop_front() else {
+            return Err("Expected semicolon".to_string());
+        };
+
+        Ok(Declaration {
+            variable,
+            initializer: Some(expression),
+        })
+    } else {
+        let Some(Token::Semicolon) = tokens.pop_front() else {
+            return Err("Expected semicolon".to_string());
+        };
+
+        Ok(Declaration {
+            variable,
+            initializer: None,
+        })
+    }
+}
+
 fn parse_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
+    match tokens.front() {
+        Some(Token::Semicolon) => parse_null_statement(tokens),
+        Some(Token::ReturnKeyword) => parse_return_statement(tokens),
+        _ => parse_expression_statement(tokens),
+    }
+}
+
+fn parse_null_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
+    let Some(Token::Semicolon) = tokens.pop_front() else {
+        return Err("Expected semicolon".to_string());
+    };
+
+    Ok(Statement::Null)
+}
+
+fn parse_return_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
     let Some(Token::ReturnKeyword) = tokens.pop_front() else {
         return Err("Expected return keyword".to_string());
     };
@@ -71,23 +141,34 @@ fn parse_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
     Ok(Statement::Return(expression))
 }
 
+fn parse_expression_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
+    let expression = parse_expression(tokens, 0)?;
+
+    let Some(Token::Semicolon) = tokens.pop_front() else {
+        return Err("Expected semicolon".to_string());
+    };
+
+    Ok(Statement::Expression(expression))
+}
+
 fn parse_expression(
     tokens: &mut VecDeque<Token>,
     min_precedence: u8,
 ) -> Result<Expression, String> {
     let mut left = parse_factor(tokens)?;
-    while let Some(t) = tokens.front().cloned() {
+    while let Some(t) = tokens.front() {
         let precedence = match t {
-            Token::PipePipe => 1,
-            Token::AmpersandAmpersand => 2,
-            Token::Pipe => 3,
-            Token::Caret => 4,
-            Token::Ampersand => 5,
-            Token::EqualEqual | Token::ExclamationEqual => 6,
-            Token::Less | Token::LessEqual | Token::Greater | Token::GreaterEqual => 7,
-            Token::LessLess | Token::GreaterGreater => 8,
-            Token::Plus | Token::Minus => 9,
-            Token::Asterisk | Token::Slash | Token::Percent => 10,
+            Token::Equal => 1,
+            Token::PipePipe => 2,
+            Token::AmpersandAmpersand => 3,
+            Token::Pipe => 4,
+            Token::Caret => 5,
+            Token::Ampersand => 6,
+            Token::EqualEqual | Token::ExclamationEqual => 7,
+            Token::Less | Token::LessEqual | Token::Greater | Token::GreaterEqual => 8,
+            Token::LessLess | Token::GreaterGreater => 9,
+            Token::Plus | Token::Minus => 10,
+            Token::Asterisk | Token::Slash | Token::Percent => 11,
             _ => break,
         };
 
@@ -95,13 +176,22 @@ fn parse_expression(
             break;
         }
 
-        let operator = parse_binary_operator(tokens)?;
-        let right = parse_expression(tokens, precedence + 1)?;
-        left = Expression::Binary {
-            op: operator,
-            lhs: Box::new(left),
-            rhs: Box::new(right),
-        };
+        if t == &Token::Equal {
+            tokens.pop_front();
+            let right = parse_expression(tokens, precedence)?;
+            left = Expression::Assignment {
+                lhs: Box::new(left),
+                rhs: Box::new(right),
+            };
+        } else {
+            let operator = parse_binary_operator(tokens)?;
+            let right = parse_expression(tokens, precedence + 1)?;
+            left = Expression::Binary {
+                op: operator,
+                lhs: Box::new(left),
+                rhs: Box::new(right),
+            };
+        }
     }
     Ok(left)
 }
@@ -111,6 +201,10 @@ fn parse_factor(tokens: &mut VecDeque<Token>) -> Result<Expression, String> {
         Some(Token::Constant(value)) => {
             tokens.pop_front();
             Ok(Expression::Constant(value))
+        }
+        Some(Token::Identifier(identifier)) => {
+            tokens.pop_front();
+            Ok(Expression::Variable(Variable { identifier }))
         }
         Some(Token::Tilde | Token::Minus | Token::Exclamation) => {
             let operator = parse_unary_operator(tokens)?;
@@ -187,7 +281,9 @@ mod tests {
         let expected = Program {
             function_definition: Function {
                 name: "main".to_string(),
-                body: Statement::Return(Expression::Constant(42)),
+                body: vec![BlockItem::Statement(Statement::Return(
+                    Expression::Constant(42),
+                ))],
             },
         };
 

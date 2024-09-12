@@ -1,9 +1,11 @@
 mod asm;
 mod ast;
 mod codegen;
+mod constants;
 mod emitter;
 mod lexer;
 mod parser;
+mod semantic;
 mod tacky;
 mod tackygen;
 mod token;
@@ -12,6 +14,7 @@ mod token;
 pub enum CompilerStage {
     Lex,
     Parse,
+    Validate,
     Tacky,
     Codegen,
     Full,
@@ -36,7 +39,13 @@ pub fn compile(input: &std::path::PathBuf, output: &std::path::PathBuf, stage: C
         return;
     }
 
-    let tacky_result = tackygen::generate(&ast_result);
+    let validated_ast_result = semantic::analyze(&ast_result).unwrap();
+    if stage == CompilerStage::Validate {
+        dbg!(&validated_ast_result);
+        return;
+    }
+
+    let tacky_result = tackygen::generate(&validated_ast_result);
     if stage == CompilerStage::Tacky {
         dbg!(&tacky_result);
         return;

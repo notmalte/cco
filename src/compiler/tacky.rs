@@ -57,14 +57,14 @@ pub struct Label {
     pub identifier: String,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum UnaryOperator {
     Complement,
     Negate,
     Not,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BinaryOperator {
     Add,
     Subtract,

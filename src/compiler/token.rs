@@ -47,6 +47,8 @@ pub enum Token {
     Less,
     /// `>`
     Greater,
+    /// `=`
+    Equal,
 
     /// `--`
     MinusMinus,

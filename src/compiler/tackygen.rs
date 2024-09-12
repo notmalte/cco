@@ -1,4 +1,8 @@
-use super::{ast, tacky};
+use super::{
+    ast,
+    constants::{TAC_LABEL_PREFIX, TAC_VAR_PREFIX},
+    tacky,
+};
 
 pub struct TackyGen {
     variable_counter: usize,
@@ -14,7 +18,7 @@ impl TackyGen {
     }
 
     fn fresh_variable(&mut self) -> tacky::Variable {
-        let name = format!("var.{}", self.variable_counter);
+        let name = format!("{TAC_VAR_PREFIX}.{}", self.variable_counter);
         self.variable_counter += 1;
 
         tacky::Variable { identifier: name }
@@ -22,8 +26,8 @@ impl TackyGen {
 
     fn fresh_label(&mut self, suffix: Option<&str>) -> tacky::Label {
         let name = match suffix {
-            Some(suffix) => format!("label.{}.{}", self.label_counter, suffix),
-            None => format!("label.{}", self.label_counter),
+            Some(suffix) => format!("{TAC_LABEL_PREFIX}.{}.{}", self.label_counter, suffix),
+            None => format!("{TAC_LABEL_PREFIX}.{}", self.label_counter),
         };
         self.label_counter += 1;
 
@@ -39,19 +43,56 @@ impl TackyGen {
     fn handle_function(&mut self, function: &ast::Function) -> tacky::Function {
         tacky::Function {
             name: function.name.clone(),
-            instructions: self.handle_statement(&function.body),
+            instructions: self.handle_block_items(&function.body),
         }
     }
 
-    fn handle_statement(&mut self, statement: &ast::Statement) -> Vec<tacky::Instruction> {
+    fn handle_block_items(&mut self, body: &[ast::BlockItem]) -> Vec<tacky::Instruction> {
+        let mut ins = vec![];
+
+        for item in body {
+            match item {
+                ast::BlockItem::Declaration(declaration) => {
+                    self.handle_declaration(&mut ins, declaration);
+                }
+                ast::BlockItem::Statement(statement) => {
+                    self.handle_statement(&mut ins, statement);
+                }
+            }
+        }
+
+        ins.push(tacky::Instruction::Return(tacky::Value::Constant(0)));
+
+        ins
+    }
+
+    fn handle_declaration(
+        &mut self,
+        ins: &mut Vec<tacky::Instruction>,
+        declaration: &ast::Declaration,
+    ) {
+        if let Some(initializer) = &declaration.initializer {
+            let value = self.handle_expression(ins, initializer);
+            let variable = tacky::Variable {
+                identifier: declaration.variable.identifier.clone(),
+            };
+            ins.push(tacky::Instruction::Copy {
+                src: value,
+                dst: variable,
+            });
+        }
+    }
+
+    fn handle_statement(&mut self, ins: &mut Vec<tacky::Instruction>, statement: &ast::Statement) {
         match statement {
             ast::Statement::Return(expr) => {
-                let mut ins = vec![];
-                let val = self.handle_expression(&mut ins, expr);
-                ins.push(tacky::Instruction::Return(val));
-
-                ins
+                let value = self.handle_expression(ins, expr);
+                ins.push(tacky::Instruction::Return(value));
             }
+            ast::Statement::Expression(expr) => {
+                self.handle_expression(ins, expr);
+            }
+            ast::Statement::Null => {}
         }
     }
 
@@ -65,7 +106,7 @@ impl TackyGen {
             ast::Expression::Unary { op, expr: inner } => {
                 let src = self.handle_expression(ins, inner);
                 let dst = self.fresh_variable();
-                let op = Self::handle_unary_operator(op.clone());
+                let op = Self::handle_unary_operator(*op);
 
                 ins.push(tacky::Instruction::Unary {
                     op,
@@ -154,7 +195,7 @@ impl TackyGen {
                     let lhs = self.handle_expression(ins, lhs);
                     let rhs = self.handle_expression(ins, rhs);
                     let dst = self.fresh_variable();
-                    let op = Self::handle_binary_operator(op.clone());
+                    let op = Self::handle_binary_operator(*op);
 
                     ins.push(tacky::Instruction::Binary {
                         op,
@@ -166,6 +207,27 @@ impl TackyGen {
                     tacky::Value::Variable(dst)
                 }
             },
+            ast::Expression::Variable(ast::Variable { identifier }) => {
+                tacky::Value::Variable(tacky::Variable {
+                    identifier: identifier.clone(),
+                })
+            }
+            ast::Expression::Assignment { lhs, rhs } => {
+                let value = self.handle_expression(ins, rhs);
+                let variable = match *lhs.clone() {
+                    ast::Expression::Variable(ast::Variable { identifier }) => {
+                        tacky::Variable { identifier }
+                    }
+                    _ => unreachable!(),
+                };
+
+                ins.push(tacky::Instruction::Copy {
+                    src: value,
+                    dst: variable.clone(),
+                });
+
+                tacky::Value::Variable(variable)
+            }
         }
     }
 

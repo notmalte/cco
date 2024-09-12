@@ -15,7 +15,7 @@ struct Args {
         long,
         group = "stage",
         conflicts_with = "assembly",
-        help = "Only run the lexer"
+        help = "Only run lexer"
     )]
     lex: bool,
 
@@ -23,7 +23,7 @@ struct Args {
         long,
         group = "stage",
         conflicts_with = "assembly",
-        help = "Only run the lexer and parser"
+        help = "Only run lexer + parser"
     )]
     parse: bool,
 
@@ -31,7 +31,15 @@ struct Args {
         long,
         group = "stage",
         conflicts_with = "assembly",
-        help = "Only run the lexer, parser, and tacky generator"
+        help = "Only run lexer + parser + semantic analysis"
+    )]
+    validate: bool,
+
+    #[arg(
+        long,
+        group = "stage",
+        conflicts_with = "assembly",
+        help = "Only run lexer + parser + semantic analysis + tacky generator"
     )]
     tacky: bool,
 
@@ -39,7 +47,7 @@ struct Args {
         long,
         group = "stage",
         conflicts_with = "assembly",
-        help = "Only run the lexer, parser, tacky generator, and code generator"
+        help = "Only run lexer + parser + semantic analysis + tacky generator + codegen"
     )]
     codegen: bool,
 
@@ -72,6 +80,8 @@ fn main() {
         CompilerStage::Lex
     } else if args.parse {
         CompilerStage::Parse
+    } else if args.validate {
+        CompilerStage::Validate
     } else if args.tacky {
         CompilerStage::Tacky
     } else if args.codegen {

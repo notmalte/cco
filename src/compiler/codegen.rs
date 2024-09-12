@@ -324,7 +324,7 @@ fn fix_up_instructions(program: &mut asm::Program, stack_size: u64) {
                     dst: asm::Operand::Reg(asm::Reg::R10),
                 });
                 ins.push(asm::Instruction::Binary {
-                    op: op.clone(),
+                    op: *op,
                     src: asm::Operand::Reg(asm::Reg::R10),
                     dst: dst.clone(),
                 });

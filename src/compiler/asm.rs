@@ -48,13 +48,13 @@ pub enum Instruction {
     Ret,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum UnaryOperator {
     Neg,
     Not,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BinaryOperator {
     Add,
     Sub,
@@ -77,7 +77,7 @@ pub struct Label {
     pub identifier: String,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ConditionCode {
     E,
     NE,
@@ -87,7 +87,7 @@ pub enum ConditionCode {
     LE,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Reg {
     AX,
     CX,
