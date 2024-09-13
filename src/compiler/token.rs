@@ -50,8 +50,6 @@ pub enum Token {
     /// `=`
     Equal,
 
-    /// `--`
-    MinusMinus,
     /// `<<`
     LessLess,
     /// `>>`
@@ -68,4 +66,28 @@ pub enum Token {
     LessEqual,
     /// `>=`
     GreaterEqual,
+    /// `+=`
+    PlusEqual,
+    /// `-=`
+    MinusEqual,
+    /// `*=`
+    AsteriskEqual,
+    /// `/=`
+    SlashEqual,
+    /// `%=`
+    PercentEqual,
+    /// `&=`
+    AmpersandEqual,
+    /// `|=`
+    PipeEqual,
+    /// `^=`
+    CaretEqual,
+    /// `<<=`
+    LessLessEqual,
+    /// `>>=`
+    GreaterGreaterEqual,
+    /// `--`
+    MinusMinus,
+    /// `++`
+    PlusPlus,
 }

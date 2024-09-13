@@ -2,8 +2,8 @@ use std::collections::VecDeque;
 
 use super::{
     ast::{
-        BinaryOperator, BlockItem, Declaration, Expression, Function, Program, Statement,
-        UnaryOperator, Variable,
+        AssignmentOperator, BinaryOperator, BlockItem, Declaration, Expression, Function, Program,
+        Statement, UnaryOperator, Variable,
     },
     token::Token,
 };
@@ -158,7 +158,17 @@ fn parse_expression(
     let mut left = parse_factor(tokens)?;
     while let Some(t) = tokens.front() {
         let precedence = match t {
-            Token::Equal => 1,
+            Token::Equal
+            | Token::PlusEqual
+            | Token::MinusEqual
+            | Token::AsteriskEqual
+            | Token::SlashEqual
+            | Token::PercentEqual
+            | Token::AmpersandEqual
+            | Token::PipeEqual
+            | Token::CaretEqual
+            | Token::LessLessEqual
+            | Token::GreaterGreaterEqual => 1,
             Token::PipePipe => 2,
             Token::AmpersandAmpersand => 3,
             Token::Pipe => 4,
@@ -176,21 +186,35 @@ fn parse_expression(
             break;
         }
 
-        if t == &Token::Equal {
-            tokens.pop_front();
-            let right = parse_expression(tokens, precedence)?;
-            left = Expression::Assignment {
-                lhs: Box::new(left),
-                rhs: Box::new(right),
-            };
-        } else {
-            let operator = parse_binary_operator(tokens)?;
-            let right = parse_expression(tokens, precedence + 1)?;
-            left = Expression::Binary {
-                op: operator,
-                lhs: Box::new(left),
-                rhs: Box::new(right),
-            };
+        match t {
+            Token::Equal
+            | Token::PlusEqual
+            | Token::MinusEqual
+            | Token::AsteriskEqual
+            | Token::SlashEqual
+            | Token::PercentEqual
+            | Token::AmpersandEqual
+            | Token::PipeEqual
+            | Token::CaretEqual
+            | Token::LessLessEqual
+            | Token::GreaterGreaterEqual => {
+                let op = parse_assignment_operator(tokens)?;
+                let right = parse_expression(tokens, precedence)?;
+                left = Expression::Assignment {
+                    op,
+                    lhs: Box::new(left),
+                    rhs: Box::new(right),
+                };
+            }
+            _ => {
+                let op = parse_binary_operator(tokens)?;
+                let right = parse_expression(tokens, precedence + 1)?;
+                left = Expression::Binary {
+                    op,
+                    lhs: Box::new(left),
+                    rhs: Box::new(right),
+                };
+            }
         }
     }
     Ok(left)
@@ -256,6 +280,23 @@ fn parse_binary_operator(tokens: &mut VecDeque<Token>) -> Result<BinaryOperator,
         Some(Token::Greater) => Ok(BinaryOperator::GreaterThan),
         Some(Token::GreaterEqual) => Ok(BinaryOperator::GreaterOrEqual),
         _ => Err("Expected binary operator".to_string()),
+    }
+}
+
+fn parse_assignment_operator(tokens: &mut VecDeque<Token>) -> Result<AssignmentOperator, String> {
+    match tokens.pop_front() {
+        Some(Token::Equal) => Ok(AssignmentOperator::Assign),
+        Some(Token::PlusEqual) => Ok(AssignmentOperator::AddAssign),
+        Some(Token::MinusEqual) => Ok(AssignmentOperator::SubtractAssign),
+        Some(Token::AsteriskEqual) => Ok(AssignmentOperator::MultiplyAssign),
+        Some(Token::SlashEqual) => Ok(AssignmentOperator::DivideAssign),
+        Some(Token::PercentEqual) => Ok(AssignmentOperator::RemainderAssign),
+        Some(Token::AmpersandEqual) => Ok(AssignmentOperator::BitwiseAndAssign),
+        Some(Token::PipeEqual) => Ok(AssignmentOperator::BitwiseOrAssign),
+        Some(Token::CaretEqual) => Ok(AssignmentOperator::BitwiseXorAssign),
+        Some(Token::LessLessEqual) => Ok(AssignmentOperator::ShiftLeftAssign),
+        Some(Token::GreaterGreaterEqual) => Ok(AssignmentOperator::ShiftRightAssign),
+        _ => Err("Expected assignment operator".to_string()),
     }
 }
 

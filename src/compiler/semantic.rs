@@ -110,11 +110,12 @@ impl VariableResolver {
                 lhs: Box::new(self.handle_expression(lhs)?),
                 rhs: Box::new(self.handle_expression(rhs)?),
             },
-            Expression::Assignment { lhs, rhs } => {
+            Expression::Assignment { op, lhs, rhs } => {
                 let Expression::Variable(_) = **lhs else {
                     return Err("Invalid lvalue in assignment".to_string());
                 };
                 Expression::Assignment {
+                    op: *op,
                     lhs: Box::new(self.handle_expression(lhs)?),
                     rhs: Box::new(self.handle_expression(rhs)?),
                 }

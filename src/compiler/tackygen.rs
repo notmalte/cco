@@ -212,21 +212,34 @@ impl TackyGen {
                     identifier: identifier.clone(),
                 })
             }
-            ast::Expression::Assignment { lhs, rhs } => {
-                let value = self.handle_expression(ins, rhs);
-                let variable = match *lhs.clone() {
+            ast::Expression::Assignment { op, lhs, rhs } => {
+                let lhs_variable = match *lhs.clone() {
                     ast::Expression::Variable(ast::Variable { identifier }) => {
                         tacky::Variable { identifier }
                     }
                     _ => unreachable!(),
                 };
 
-                ins.push(tacky::Instruction::Copy {
-                    src: value,
-                    dst: variable.clone(),
-                });
+                let rhs_value = self.handle_expression(ins, rhs);
 
-                tacky::Value::Variable(variable)
+                match op {
+                    ast::AssignmentOperator::Assign => {
+                        ins.push(tacky::Instruction::Copy {
+                            src: rhs_value,
+                            dst: lhs_variable.clone(),
+                        });
+                    }
+                    _ => {
+                        ins.push(tacky::Instruction::Binary {
+                            op: Self::handle_assignment_operator(*op),
+                            lhs: tacky::Value::Variable(lhs_variable.clone()),
+                            rhs: rhs_value,
+                            dst: lhs_variable.clone(),
+                        });
+                    }
+                }
+
+                tacky::Value::Variable(lhs_variable)
             }
         }
     }
@@ -258,6 +271,22 @@ impl TackyGen {
             ast::BinaryOperator::GreaterThan => tacky::BinaryOperator::GreaterThan,
             ast::BinaryOperator::GreaterOrEqual => tacky::BinaryOperator::GreaterOrEqual,
             ast::BinaryOperator::LogicalAnd | ast::BinaryOperator::LogicalOr => unreachable!(),
+        }
+    }
+
+    fn handle_assignment_operator(op: ast::AssignmentOperator) -> tacky::BinaryOperator {
+        match op {
+            ast::AssignmentOperator::Assign => unreachable!(),
+            ast::AssignmentOperator::AddAssign => tacky::BinaryOperator::Add,
+            ast::AssignmentOperator::SubtractAssign => tacky::BinaryOperator::Subtract,
+            ast::AssignmentOperator::MultiplyAssign => tacky::BinaryOperator::Multiply,
+            ast::AssignmentOperator::DivideAssign => tacky::BinaryOperator::Divide,
+            ast::AssignmentOperator::RemainderAssign => tacky::BinaryOperator::Remainder,
+            ast::AssignmentOperator::BitwiseAndAssign => tacky::BinaryOperator::BitwiseAnd,
+            ast::AssignmentOperator::BitwiseOrAssign => tacky::BinaryOperator::BitwiseOr,
+            ast::AssignmentOperator::BitwiseXorAssign => tacky::BinaryOperator::BitwiseXor,
+            ast::AssignmentOperator::ShiftLeftAssign => tacky::BinaryOperator::ShiftLeft,
+            ast::AssignmentOperator::ShiftRightAssign => tacky::BinaryOperator::ShiftRight,
         }
     }
 }

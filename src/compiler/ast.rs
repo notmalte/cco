@@ -42,6 +42,7 @@ pub enum Expression {
         rhs: Box<Expression>,
     },
     Assignment {
+        op: AssignmentOperator,
         lhs: Box<Expression>,
         rhs: Box<Expression>,
     },
@@ -79,4 +80,19 @@ pub enum BinaryOperator {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Variable {
     pub identifier: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum AssignmentOperator {
+    Assign,
+    AddAssign,
+    SubtractAssign,
+    MultiplyAssign,
+    DivideAssign,
+    RemainderAssign,
+    BitwiseAndAssign,
+    BitwiseOrAssign,
+    BitwiseXorAssign,
+    ShiftLeftAssign,
+    ShiftRightAssign,
 }
