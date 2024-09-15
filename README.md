@@ -11,10 +11,11 @@ Arguments:
   <PATH>  Path to the C source file
 
 Options:
-      --lex       Only run the lexer
-      --parse     Only run the lexer and parser
-      --tacky     Only run the lexer, parser, and tacky generator
-      --codegen   Only run the lexer, parser, tacky generator, and code generator
+      --lex       Only run lexer
+      --parse     Only run lexer + parser
+      --validate  Only run lexer + parser + semantic analysis
+      --tacky     Only run lexer + parser + semantic analysis + tacky generator
+      --codegen   Only run lexer + parser + semantic analysis + tacky generator + codegen
   -S, --assembly  Emit assembly code, but do not link
   -h, --help      Print help
   -V, --version   Print version
