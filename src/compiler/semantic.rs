@@ -1,5 +1,5 @@
 use super::{
-    ast::{BlockItem, Declaration, Expression, Function, Program, Statement},
+    ast::{BlockItem, Declaration, Expression, Function, Program, Statement, UnaryOperator},
     constants::SEMANTIC_VAR_PREFIX,
 };
 use std::collections::HashMap;
@@ -101,10 +101,21 @@ impl VariableResolver {
                     return Err(format!("Variable {} not declared", var.identifier));
                 }
             }
-            Expression::Unary { op, expr } => Expression::Unary {
-                op: *op,
-                expr: Box::new(self.handle_expression(expr)?),
-            },
+            Expression::Unary { op, expr } => {
+                if let UnaryOperator::PrefixIncrement
+                | UnaryOperator::PrefixDecrement
+                | UnaryOperator::PostfixIncrement
+                | UnaryOperator::PostfixDecrement = *op
+                {
+                    let Expression::Variable(_) = **expr else {
+                        return Err("Invalid lvalue in increment/decrement".to_string());
+                    };
+                }
+                Expression::Unary {
+                    op: *op,
+                    expr: Box::new(self.handle_expression(expr)?),
+                }
+            }
             Expression::Binary { op, lhs, rhs } => Expression::Binary {
                 op: *op,
                 lhs: Box::new(self.handle_expression(lhs)?),

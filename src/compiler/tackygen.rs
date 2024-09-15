@@ -103,19 +103,75 @@ impl TackyGen {
     ) -> tacky::Value {
         match expr {
             ast::Expression::Constant(value) => tacky::Value::Constant(*value),
-            ast::Expression::Unary { op, expr: inner } => {
-                let src = self.handle_expression(ins, inner);
-                let dst = self.fresh_variable();
-                let op = Self::handle_unary_operator(*op);
+            ast::Expression::Unary { op, expr: inner } => match op {
+                ast::UnaryOperator::PrefixIncrement | ast::UnaryOperator::PrefixDecrement => {
+                    let variable = match *inner.clone() {
+                        ast::Expression::Variable(ast::Variable { identifier }) => {
+                            tacky::Variable { identifier }
+                        }
+                        _ => unreachable!(),
+                    };
 
-                ins.push(tacky::Instruction::Unary {
-                    op,
-                    src,
-                    dst: dst.clone(),
-                });
+                    let op = match op {
+                        ast::UnaryOperator::PrefixIncrement => tacky::BinaryOperator::Add,
+                        ast::UnaryOperator::PrefixDecrement => tacky::BinaryOperator::Subtract,
+                        _ => unreachable!(),
+                    };
 
-                tacky::Value::Variable(dst)
-            }
+                    ins.push(tacky::Instruction::Binary {
+                        op,
+                        lhs: tacky::Value::Variable(variable.clone()),
+                        rhs: tacky::Value::Constant(1),
+                        dst: variable.clone(),
+                    });
+
+                    tacky::Value::Variable(variable)
+                }
+                ast::UnaryOperator::PostfixIncrement | ast::UnaryOperator::PostfixDecrement => {
+                    let variable = match *inner.clone() {
+                        ast::Expression::Variable(ast::Variable { identifier }) => {
+                            tacky::Variable { identifier }
+                        }
+                        _ => unreachable!(),
+                    };
+
+                    let prev = self.fresh_variable();
+
+                    ins.push(tacky::Instruction::Copy {
+                        src: tacky::Value::Variable(variable.clone()),
+                        dst: prev.clone(),
+                    });
+
+                    let op = match op {
+                        ast::UnaryOperator::PostfixIncrement => tacky::BinaryOperator::Add,
+                        ast::UnaryOperator::PostfixDecrement => tacky::BinaryOperator::Subtract,
+                        _ => unreachable!(),
+                    };
+
+                    ins.push(tacky::Instruction::Binary {
+                        op,
+                        lhs: tacky::Value::Variable(variable.clone()),
+                        rhs: tacky::Value::Constant(1),
+                        dst: variable.clone(),
+                    });
+
+                    tacky::Value::Variable(prev)
+                }
+
+                _ => {
+                    let src = self.handle_expression(ins, inner);
+                    let dst = self.fresh_variable();
+                    let op = Self::handle_unary_operator(*op);
+
+                    ins.push(tacky::Instruction::Unary {
+                        op,
+                        src,
+                        dst: dst.clone(),
+                    });
+
+                    tacky::Value::Variable(dst)
+                }
+            },
             ast::Expression::Binary { op, lhs, rhs } => match op {
                 ast::BinaryOperator::LogicalAnd => {
                     let dst = self.fresh_variable();
@@ -249,6 +305,10 @@ impl TackyGen {
             ast::UnaryOperator::Negate => tacky::UnaryOperator::Negate,
             ast::UnaryOperator::Complement => tacky::UnaryOperator::Complement,
             ast::UnaryOperator::Not => tacky::UnaryOperator::Not,
+            ast::UnaryOperator::PrefixIncrement
+            | ast::UnaryOperator::PrefixDecrement
+            | ast::UnaryOperator::PostfixIncrement
+            | ast::UnaryOperator::PostfixDecrement => unreachable!(),
         }
     }
 

@@ -53,6 +53,10 @@ pub enum UnaryOperator {
     Complement,
     Negate,
     Not,
+    PrefixIncrement,
+    PrefixDecrement,
+    PostfixIncrement,
+    PostfixDecrement,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

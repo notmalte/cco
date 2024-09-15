@@ -221,22 +221,24 @@ fn parse_expression(
 }
 
 fn parse_factor(tokens: &mut VecDeque<Token>) -> Result<Expression, String> {
-    match tokens.front().cloned() {
+    let factor = match tokens.front().cloned() {
         Some(Token::Constant(value)) => {
             tokens.pop_front();
-            Ok(Expression::Constant(value))
+            Expression::Constant(value)
         }
         Some(Token::Identifier(identifier)) => {
             tokens.pop_front();
-            Ok(Expression::Variable(Variable { identifier }))
+            Expression::Variable(Variable { identifier })
         }
-        Some(Token::Tilde | Token::Minus | Token::Exclamation) => {
-            let operator = parse_unary_operator(tokens)?;
+        Some(
+            Token::Tilde | Token::Minus | Token::Exclamation | Token::PlusPlus | Token::MinusMinus,
+        ) => {
+            let op = parse_unary_prefix_operator(tokens)?;
             let inner = parse_factor(tokens)?;
-            Ok(Expression::Unary {
-                op: operator,
+            Expression::Unary {
+                op,
                 expr: Box::new(inner),
-            })
+            }
         }
         Some(Token::OpenParen) => {
             tokens.pop_front();
@@ -244,18 +246,39 @@ fn parse_factor(tokens: &mut VecDeque<Token>) -> Result<Expression, String> {
             let Some(Token::CloseParen) = tokens.pop_front() else {
                 return Err("Expected close parenthesis".to_string());
             };
-            Ok(inner)
+            inner
         }
-        _ => Err("Expected factor".to_string()),
-    }
+        _ => return Err("Expected factor".to_string()),
+    };
+
+    Ok(match tokens.front() {
+        Some(Token::PlusPlus | Token::MinusMinus) => {
+            let op = parse_unary_postfix_operator(tokens)?;
+            Expression::Unary {
+                op,
+                expr: Box::new(factor),
+            }
+        }
+        _ => factor,
+    })
 }
 
-fn parse_unary_operator(tokens: &mut VecDeque<Token>) -> Result<UnaryOperator, String> {
+fn parse_unary_prefix_operator(tokens: &mut VecDeque<Token>) -> Result<UnaryOperator, String> {
     match tokens.pop_front() {
         Some(Token::Tilde) => Ok(UnaryOperator::Complement),
         Some(Token::Minus) => Ok(UnaryOperator::Negate),
         Some(Token::Exclamation) => Ok(UnaryOperator::Not),
-        _ => Err("Expected unary operator".to_string()),
+        Some(Token::PlusPlus) => Ok(UnaryOperator::PrefixIncrement),
+        Some(Token::MinusMinus) => Ok(UnaryOperator::PrefixDecrement),
+        _ => Err("Expected unary prefix operator".to_string()),
+    }
+}
+
+fn parse_unary_postfix_operator(tokens: &mut VecDeque<Token>) -> Result<UnaryOperator, String> {
+    match tokens.pop_front() {
+        Some(Token::PlusPlus) => Ok(UnaryOperator::PostfixIncrement),
+        Some(Token::MinusMinus) => Ok(UnaryOperator::PostfixDecrement),
+        _ => Err("Expected unary postfix operator".to_string()),
     }
 }
 

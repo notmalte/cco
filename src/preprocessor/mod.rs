@@ -10,5 +10,7 @@ pub fn preprocess(input: &PathBuf, output: &PathBuf) {
         .output()
         .unwrap();
 
-    assert!(command_output.status.success());
+    if !command_output.status.success() {
+        panic!("Failed to preprocess: {:?}", command_output);
+    }
 }
