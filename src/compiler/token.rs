@@ -9,6 +9,10 @@ pub enum Token {
     IntKeyword,
     /// `return`
     ReturnKeyword,
+    /// `if`
+    IfKeyword,
+    /// `else`
+    ElseKeyword,
 
     /// e.g. `42`
     Constant(i64),
@@ -49,6 +53,10 @@ pub enum Token {
     Greater,
     /// `=`
     Equal,
+    /// `?`
+    Question,
+    /// `:`
+    Colon,
 
     /// `<<`
     LessLess,
@@ -82,12 +90,13 @@ pub enum Token {
     PipeEqual,
     /// `^=`
     CaretEqual,
-    /// `<<=`
-    LessLessEqual,
-    /// `>>=`
-    GreaterGreaterEqual,
     /// `--`
     MinusMinus,
     /// `++`
     PlusPlus,
+
+    /// `<<=`
+    LessLessEqual,
+    /// `>>=`
+    GreaterGreaterEqual,
 }

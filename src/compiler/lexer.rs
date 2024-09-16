@@ -15,6 +15,8 @@ fn find_first_token(s: &str) -> Option<(Token, &str)> {
             "void" => Token::VoidKeyword,
             "int" => Token::IntKeyword,
             "return" => Token::ReturnKeyword,
+            "if" => Token::IfKeyword,
+            "else" => Token::ElseKeyword,
             _ => Token::Identifier(ms.to_string()),
         };
 
@@ -69,6 +71,8 @@ fn find_first_token(s: &str) -> Option<(Token, &str)> {
         ("<", Token::Less),
         (">", Token::Greater),
         ("=", Token::Equal),
+        ("?", Token::Question),
+        (":", Token::Colon),
     ];
 
     tokens
