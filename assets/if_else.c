@@ -4,11 +4,10 @@ int main(void) {
 
     int b = 0;
 
-    if (a == 4) {
+    if (a == 4)
         b = 1;
-    } else {
+    else
         b = 0;
-    }
 
     return b;
 }

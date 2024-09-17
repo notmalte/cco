@@ -115,6 +115,7 @@ fn parse_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
     match tokens.front() {
         Some(Token::Semicolon) => parse_null_statement(tokens),
         Some(Token::ReturnKeyword) => parse_return_statement(tokens),
+        Some(Token::IfKeyword) => parse_if_statement(tokens),
         _ => parse_expression_statement(tokens),
     }
 }
@@ -139,6 +140,37 @@ fn parse_return_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, Str
     };
 
     Ok(Statement::Return(expression))
+}
+
+fn parse_if_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
+    let Some(Token::IfKeyword) = tokens.pop_front() else {
+        return Err("Expected if keyword".to_string());
+    };
+
+    let Some(Token::OpenParen) = tokens.pop_front() else {
+        return Err("Expected open parenthesis".to_string());
+    };
+
+    let condition = parse_expression(tokens, 0)?;
+
+    let Some(Token::CloseParen) = tokens.pop_front() else {
+        return Err("Expected close parenthesis".to_string());
+    };
+
+    let then_branch = Box::new(parse_statement(tokens)?);
+
+    let else_branch = if let Some(Token::ElseKeyword) = tokens.front() {
+        tokens.pop_front();
+        Some(Box::new(parse_statement(tokens)?))
+    } else {
+        None
+    };
+
+    Ok(Statement::If {
+        condition,
+        then_branch,
+        else_branch,
+    })
 }
 
 fn parse_expression_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {

@@ -85,6 +85,7 @@ impl VariableResolver {
         Ok(match statement {
             Statement::Return(expr) => Statement::Return(self.handle_expression(expr)?),
             Statement::Expression(expr) => Statement::Expression(self.handle_expression(expr)?),
+            Statement::If { .. } => todo!(),
             Statement::Null => Statement::Null,
         })
     }

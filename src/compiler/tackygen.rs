@@ -92,6 +92,7 @@ impl TackyGen {
             ast::Statement::Expression(expr) => {
                 self.handle_expression(ins, expr);
             }
+            ast::Statement::If { .. } => todo!(),
             ast::Statement::Null => {}
         }
     }
