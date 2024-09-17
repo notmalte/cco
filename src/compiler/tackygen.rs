@@ -298,6 +298,7 @@ impl TackyGen {
 
                 tacky::Value::Variable(lhs_variable)
             }
+            ast::Expression::Conditional { .. } => todo!(),
         }
     }
 

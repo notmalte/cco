@@ -201,16 +201,17 @@ fn parse_expression(
             | Token::CaretEqual
             | Token::LessLessEqual
             | Token::GreaterGreaterEqual => 1,
-            Token::PipePipe => 2,
-            Token::AmpersandAmpersand => 3,
-            Token::Pipe => 4,
-            Token::Caret => 5,
-            Token::Ampersand => 6,
-            Token::EqualEqual | Token::ExclamationEqual => 7,
-            Token::Less | Token::LessEqual | Token::Greater | Token::GreaterEqual => 8,
-            Token::LessLess | Token::GreaterGreater => 9,
-            Token::Plus | Token::Minus => 10,
-            Token::Asterisk | Token::Slash | Token::Percent => 11,
+            Token::Question => 2,
+            Token::PipePipe => 3,
+            Token::AmpersandAmpersand => 4,
+            Token::Pipe => 5,
+            Token::Caret => 6,
+            Token::Ampersand => 7,
+            Token::EqualEqual | Token::ExclamationEqual => 8,
+            Token::Less | Token::LessEqual | Token::Greater | Token::GreaterEqual => 9,
+            Token::LessLess | Token::GreaterGreater => 10,
+            Token::Plus | Token::Minus => 11,
+            Token::Asterisk | Token::Slash | Token::Percent => 12,
             _ => break,
         };
 
@@ -236,6 +237,25 @@ fn parse_expression(
                     op,
                     lhs: Box::new(left),
                     rhs: Box::new(right),
+                };
+            }
+            Token::Question => {
+                let Some(Token::Question) = tokens.pop_front() else {
+                    return Err("Expected question mark".to_string());
+                };
+
+                let then_expr = parse_expression(tokens, 0)?;
+
+                let Some(Token::Colon) = tokens.pop_front() else {
+                    return Err("Expected colon".to_string());
+                };
+
+                let else_expr = parse_expression(tokens, precedence)?;
+
+                left = Expression::Conditional {
+                    condition: Box::new(left),
+                    then_expr: Box::new(then_expr),
+                    else_expr: Box::new(else_expr),
                 };
             }
             _ => {

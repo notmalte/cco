@@ -7,7 +7,9 @@ int main(void) {
     if (a == 4)
         b = 1;
     else
-        b = 0;
+        b = 2;
+
+    int c = b < 2 ? 3 : 4;
 
     return b;
 }

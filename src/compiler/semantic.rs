@@ -132,6 +132,7 @@ impl VariableResolver {
                     rhs: Box::new(self.handle_expression(rhs)?),
                 }
             }
+            Expression::Conditional { .. } => todo!(),
         })
     }
 }
