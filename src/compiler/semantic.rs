@@ -85,7 +85,19 @@ impl VariableResolver {
         Ok(match statement {
             Statement::Return(expr) => Statement::Return(self.handle_expression(expr)?),
             Statement::Expression(expr) => Statement::Expression(self.handle_expression(expr)?),
-            Statement::If { .. } => todo!(),
+            Statement::If {
+                condition,
+                then_branch,
+                else_branch,
+            } => Statement::If {
+                condition: self.handle_expression(condition)?,
+                then_branch: Box::new(self.handle_statement(then_branch)?),
+                else_branch: if let Some(else_branch) = else_branch {
+                    Some(Box::new(self.handle_statement(else_branch)?))
+                } else {
+                    None
+                },
+            },
             Statement::Null => Statement::Null,
         })
     }
@@ -132,7 +144,15 @@ impl VariableResolver {
                     rhs: Box::new(self.handle_expression(rhs)?),
                 }
             }
-            Expression::Conditional { .. } => todo!(),
+            Expression::Conditional {
+                condition,
+                then_expr,
+                else_expr,
+            } => Expression::Conditional {
+                condition: Box::new(self.handle_expression(condition)?),
+                then_expr: Box::new(self.handle_expression(then_expr)?),
+                else_expr: Box::new(self.handle_expression(else_expr)?),
+            },
         })
     }
 }

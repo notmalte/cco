@@ -92,7 +92,39 @@ impl TackyGen {
             ast::Statement::Expression(expr) => {
                 self.handle_expression(ins, expr);
             }
-            ast::Statement::If { .. } => todo!(),
+            ast::Statement::If {
+                condition,
+                then_branch,
+                else_branch,
+            } => {
+                if let Some(else_branch) = else_branch {
+                    let else_label = self.fresh_label(Some("if_else"));
+                    let end_label = self.fresh_label(Some("if_end"));
+
+                    let condition_value = self.handle_expression(ins, condition);
+                    ins.push(tacky::Instruction::JumpIfZero {
+                        condition: condition_value,
+                        target: else_label.clone(),
+                    });
+                    self.handle_statement(ins, then_branch);
+                    ins.push(tacky::Instruction::Jump {
+                        target: end_label.clone(),
+                    });
+                    ins.push(tacky::Instruction::Label(else_label));
+                    self.handle_statement(ins, else_branch);
+                    ins.push(tacky::Instruction::Label(end_label));
+                } else {
+                    let end_label = self.fresh_label(Some("if_end"));
+
+                    let condition_value = self.handle_expression(ins, condition);
+                    ins.push(tacky::Instruction::JumpIfZero {
+                        condition: condition_value,
+                        target: end_label.clone(),
+                    });
+                    self.handle_statement(ins, then_branch);
+                    ins.push(tacky::Instruction::Label(end_label));
+                }
+            }
             ast::Statement::Null => {}
         }
     }
@@ -298,7 +330,42 @@ impl TackyGen {
 
                 tacky::Value::Variable(lhs_variable)
             }
-            ast::Expression::Conditional { .. } => todo!(),
+            ast::Expression::Conditional {
+                condition,
+                then_expr,
+                else_expr,
+            } => {
+                let dst = self.fresh_variable();
+
+                let label_else = self.fresh_label(Some("cond_else"));
+                let label_end = self.fresh_label(Some("cond_end"));
+
+                let condition_value = self.handle_expression(ins, condition);
+                ins.push(tacky::Instruction::JumpIfZero {
+                    condition: condition_value,
+                    target: label_else.clone(),
+                });
+
+                let then_value = self.handle_expression(ins, then_expr);
+                ins.push(tacky::Instruction::Copy {
+                    src: then_value,
+                    dst: dst.clone(),
+                });
+                ins.push(tacky::Instruction::Jump {
+                    target: label_end.clone(),
+                });
+
+                ins.push(tacky::Instruction::Label(label_else));
+                let else_value = self.handle_expression(ins, else_expr);
+                ins.push(tacky::Instruction::Copy {
+                    src: else_value,
+                    dst: dst.clone(),
+                });
+
+                ins.push(tacky::Instruction::Label(label_end));
+
+                tacky::Value::Variable(dst)
+            }
         }
     }
 
