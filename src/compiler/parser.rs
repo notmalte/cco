@@ -2,8 +2,8 @@ use std::collections::VecDeque;
 
 use super::{
     ast::{
-        AssignmentOperator, BinaryOperator, BlockItem, Declaration, Expression, Function, Program,
-        Statement, UnaryOperator, Variable,
+        AssignmentOperator, BinaryOperator, BlockItem, Declaration, Expression, Function, Label,
+        Program, Statement, UnaryOperator, Variable,
     },
     token::Token,
 };
@@ -116,6 +116,14 @@ fn parse_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
         Some(Token::Semicolon) => parse_null_statement(tokens),
         Some(Token::ReturnKeyword) => parse_return_statement(tokens),
         Some(Token::IfKeyword) => parse_if_statement(tokens),
+        Some(Token::GotoKeyword) => parse_goto_statement(tokens),
+        Some(Token::Identifier(_)) => {
+            if let Some(Token::Colon) = tokens.get(1) {
+                parse_labeled_statement(tokens)
+            } else {
+                parse_expression_statement(tokens)
+            }
+        }
         _ => parse_expression_statement(tokens),
     }
 }
@@ -171,6 +179,39 @@ fn parse_if_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String>
         then_branch,
         else_branch,
     })
+}
+
+fn parse_goto_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
+    let Some(Token::GotoKeyword) = tokens.pop_front() else {
+        return Err("Expected goto keyword".to_string());
+    };
+
+    let Some(Token::Identifier(label)) = tokens.pop_front() else {
+        return Err("Expected identifier".to_string());
+    };
+
+    let Some(Token::Semicolon) = tokens.pop_front() else {
+        return Err("Expected semicolon".to_string());
+    };
+
+    Ok(Statement::Goto(Label { identifier: label }))
+}
+
+fn parse_labeled_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
+    let Some(Token::Identifier(label)) = tokens.pop_front() else {
+        return Err("Expected identifier".to_string());
+    };
+
+    let Some(Token::Colon) = tokens.pop_front() else {
+        return Err("Expected colon".to_string());
+    };
+
+    let statement = parse_statement(tokens)?;
+
+    Ok(Statement::Labeled(
+        Label { identifier: label },
+        Box::new(statement),
+    ))
 }
 
 fn parse_expression_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {

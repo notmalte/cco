@@ -24,6 +24,8 @@ pub enum Statement {
         then_branch: Box<Statement>,
         else_branch: Option<Box<Statement>>,
     },
+    Goto(Label),
+    Labeled(Label, Box<Statement>),
     Null,
 }
 
@@ -109,4 +111,9 @@ pub enum AssignmentOperator {
     BitwiseXorAssign,
     ShiftLeftAssign,
     ShiftRightAssign,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Label {
+    pub identifier: String,
 }

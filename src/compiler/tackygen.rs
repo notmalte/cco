@@ -125,6 +125,8 @@ impl TackyGen {
                     ins.push(tacky::Instruction::Label(end_label));
                 }
             }
+            ast::Statement::Goto(_) => todo!(),
+            ast::Statement::Labeled(_, _) => todo!(),
             ast::Statement::Null => {}
         }
     }

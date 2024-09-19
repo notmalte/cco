@@ -17,6 +17,7 @@ fn find_first_token(s: &str) -> Option<(Token, &str)> {
             "return" => Token::ReturnKeyword,
             "if" => Token::IfKeyword,
             "else" => Token::ElseKeyword,
+            "goto" => Token::GotoKeyword,
             _ => Token::Identifier(ms.to_string()),
         };
 

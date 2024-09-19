@@ -98,6 +98,8 @@ impl VariableResolver {
                     None
                 },
             },
+            Statement::Goto(_) => todo!(),
+            Statement::Labeled(_, _) => todo!(),
             Statement::Null => Statement::Null,
         })
     }

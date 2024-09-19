@@ -13,6 +13,8 @@ pub enum Token {
     IfKeyword,
     /// `else`
     ElseKeyword,
+    /// `goto`
+    GotoKeyword,
 
     /// e.g. `42`
     Constant(i64),
