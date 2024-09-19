@@ -273,7 +273,7 @@ fn parse_expression(
 }
 
 fn parse_factor(tokens: &mut VecDeque<Token>) -> Result<Expression, String> {
-    let factor = match tokens.front().cloned() {
+    let mut factor = match tokens.front().cloned() {
         Some(Token::Constant(value)) => {
             tokens.pop_front();
             Expression::Constant(value)
@@ -303,16 +303,15 @@ fn parse_factor(tokens: &mut VecDeque<Token>) -> Result<Expression, String> {
         _ => return Err("Expected factor".to_string()),
     };
 
-    Ok(match tokens.front() {
-        Some(Token::PlusPlus | Token::MinusMinus) => {
-            let op = parse_unary_postfix_operator(tokens)?;
-            Expression::Unary {
-                op,
-                expr: Box::new(factor),
-            }
-        }
-        _ => factor,
-    })
+    while let Some(Token::PlusPlus | Token::MinusMinus) = tokens.front() {
+        let op = parse_unary_postfix_operator(tokens)?;
+        factor = Expression::Unary {
+            op,
+            expr: Box::new(factor),
+        };
+    }
+
+    Ok(factor)
 }
 
 fn parse_unary_prefix_operator(tokens: &mut VecDeque<Token>) -> Result<UnaryOperator, String> {
