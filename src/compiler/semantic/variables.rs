@@ -1,22 +1,26 @@
-use super::{
-    ast::{BlockItem, Declaration, Expression, Function, Program, Statement, UnaryOperator},
+use crate::compiler::{
+    ast::{
+        BlockItem, Declaration, Expression, Function, Program, Statement, UnaryOperator, Variable,
+    },
     constants::SEMANTIC_VAR_PREFIX,
 };
 use std::collections::HashMap;
 
-use super::ast::Variable;
-
-struct VariableResolver {
+pub struct VariableResolver {
     map: HashMap<String, String>,
     counter: usize,
 }
 
 impl VariableResolver {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             map: HashMap::new(),
             counter: 0,
         }
+    }
+
+    pub fn analyze(&mut self, program: &Program) -> Result<Program, String> {
+        self.handle_program(program)
     }
 
     fn fresh_variable(&mut self, suffix: Option<&str>) -> Variable {
@@ -98,8 +102,10 @@ impl VariableResolver {
                     None
                 },
             },
-            Statement::Goto(_) => todo!(),
-            Statement::Labeled(_, _) => todo!(),
+            Statement::Goto(label) => Statement::Goto(label.clone()),
+            Statement::Labeled(label, statement) => {
+                Statement::Labeled(label.clone(), Box::new(self.handle_statement(statement)?))
+            }
             Statement::Null => Statement::Null,
         })
     }
@@ -108,9 +114,9 @@ impl VariableResolver {
         Ok(match expr {
             Expression::Constant(_) => expr.clone(),
             Expression::Variable(var) => {
-                if let Some(new_name) = self.map.get(&var.identifier) {
+                if let Some(new_identifier) = self.map.get(&var.identifier) {
                     Expression::Variable(Variable {
-                        identifier: new_name.clone(),
+                        identifier: new_identifier.clone(),
                     })
                 } else {
                     return Err(format!("Variable {} not declared", var.identifier));
@@ -157,8 +163,4 @@ impl VariableResolver {
             },
         })
     }
-}
-
-pub fn analyze(program: &Program) -> Result<Program, String> {
-    (VariableResolver::new()).handle_program(program)
 }
