@@ -125,8 +125,19 @@ impl TackyGen {
                     ins.push(tacky::Instruction::Label(end_label));
                 }
             }
-            ast::Statement::Goto(_) => todo!(),
-            ast::Statement::Labeled(_, _) => todo!(),
+            ast::Statement::Goto(label) => {
+                ins.push(tacky::Instruction::Jump {
+                    target: tacky::Label {
+                        identifier: label.identifier.clone(),
+                    },
+                });
+            }
+            ast::Statement::Labeled(label, statement) => {
+                ins.push(tacky::Instruction::Label(tacky::Label {
+                    identifier: label.identifier.clone(),
+                }));
+                self.handle_statement(ins, statement);
+            }
             ast::Statement::Null => {}
         }
     }
