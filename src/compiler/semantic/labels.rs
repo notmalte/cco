@@ -1,5 +1,5 @@
 use crate::compiler::{
-    ast::{BlockItem, Function, Label, Program, Statement},
+    ast::{Block, BlockItem, Function, Label, Program, Statement},
     constants::SEMANTIC_LABEL_PREFIX,
 };
 use std::collections::HashMap;
@@ -18,24 +18,16 @@ impl LabelResolver {
     }
 
     pub fn analyze(&mut self, program: &Program) -> Result<Program, String> {
-        let mut block_items = program.function_definition.body.clone();
+        let mut body = program.function_definition.body.clone();
 
-        for item in block_items.iter_mut() {
-            if let BlockItem::Statement(statement) = item {
-                *statement = self.rewrite_label_in_labeled_statement(statement)?;
-            }
-        }
+        body = self.rewrite_label_in_block(&body)?;
 
-        for item in block_items.iter_mut() {
-            if let BlockItem::Statement(statement) = item {
-                *statement = self.rewrite_goto_in_statement(statement)?;
-            }
-        }
+        body = self.rewrite_goto_in_block(&body)?;
 
         Ok(Program {
             function_definition: Function {
                 name: program.function_definition.name.clone(),
-                body: block_items,
+                body,
             },
         })
     }
@@ -50,10 +42,17 @@ impl LabelResolver {
         Label { identifier: name }
     }
 
-    fn rewrite_label_in_labeled_statement(
-        &mut self,
-        statement: &Statement,
-    ) -> Result<Statement, String> {
+    fn rewrite_label_in_block(&mut self, block: &Block) -> Result<Block, String> {
+        let mut result = block.clone();
+        for item in result.items.iter_mut() {
+            if let BlockItem::Statement(statement) = item {
+                *statement = self.rewrite_label_in_statement(statement)?;
+            }
+        }
+        Ok(result)
+    }
+
+    fn rewrite_label_in_statement(&mut self, statement: &Statement) -> Result<Statement, String> {
         Ok(match statement {
             Statement::Labeled(label, statement) => {
                 if self.map.contains_key(&label.identifier) {
@@ -66,7 +65,7 @@ impl LabelResolver {
 
                 Statement::Labeled(
                     new_label,
-                    Box::new(self.rewrite_label_in_labeled_statement(statement)?),
+                    Box::new(self.rewrite_label_in_statement(statement)?),
                 )
             }
             Statement::If {
@@ -75,20 +74,29 @@ impl LabelResolver {
                 else_branch,
             } => Statement::If {
                 condition: condition.clone(),
-                then_branch: Box::new(self.rewrite_label_in_labeled_statement(then_branch)?),
+                then_branch: Box::new(self.rewrite_label_in_statement(then_branch)?),
                 else_branch: if let Some(else_branch) = else_branch {
-                    Some(Box::new(
-                        self.rewrite_label_in_labeled_statement(else_branch)?,
-                    ))
+                    Some(Box::new(self.rewrite_label_in_statement(else_branch)?))
                 } else {
                     None
                 },
             },
+            Statement::Compound(block) => Statement::Compound(self.rewrite_label_in_block(block)?),
             Statement::Return(_)
             | Statement::Expression(_)
             | Statement::Goto(_)
             | Statement::Null => statement.clone(),
         })
+    }
+
+    fn rewrite_goto_in_block(&mut self, block: &Block) -> Result<Block, String> {
+        let mut result = block.clone();
+        for item in result.items.iter_mut() {
+            if let BlockItem::Statement(statement) = item {
+                *statement = self.rewrite_goto_in_statement(statement)?;
+            }
+        }
+        Ok(result)
     }
 
     fn rewrite_goto_in_statement(&mut self, statement: &Statement) -> Result<Statement, String> {
@@ -119,6 +127,7 @@ impl LabelResolver {
                 label.clone(),
                 Box::new(self.rewrite_goto_in_statement(statement)?),
             ),
+            Statement::Compound(block) => Statement::Compound(self.rewrite_goto_in_block(block)?),
             Statement::Return(_) | Statement::Expression(_) | Statement::Null => statement.clone(),
         })
     }

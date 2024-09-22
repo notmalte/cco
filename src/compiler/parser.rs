@@ -2,8 +2,8 @@ use std::collections::VecDeque;
 
 use super::{
     ast::{
-        AssignmentOperator, BinaryOperator, BlockItem, Declaration, Expression, Function, Label,
-        Program, Statement, UnaryOperator, Variable,
+        AssignmentOperator, BinaryOperator, Block, BlockItem, Declaration, Expression, Function,
+        Label, Program, Statement, UnaryOperator, Variable,
     },
     token::Token,
 };
@@ -47,25 +47,31 @@ fn parse_function(tokens: &mut VecDeque<Token>) -> Result<Function, String> {
         return Err("Expected close parenthesis".to_string());
     };
 
+    let body = parse_block(tokens)?;
+
+    Ok(Function { name, body })
+}
+
+fn parse_block(tokens: &mut VecDeque<Token>) -> Result<Block, String> {
     let Some(Token::OpenBrace) = tokens.pop_front() else {
         return Err("Expected open brace".to_string());
     };
 
-    let mut body = vec![];
+    let mut items = vec![];
 
     while let Some(t) = tokens.front() {
         if t == &Token::CloseBrace {
             break;
         }
 
-        body.push(parse_block_item(tokens)?);
+        items.push(parse_block_item(tokens)?);
     }
 
     let Some(Token::CloseBrace) = tokens.pop_front() else {
         return Err("Expected close brace".to_string());
     };
 
-    Ok(Function { name, body })
+    Ok(Block { items })
 }
 
 fn parse_block_item(tokens: &mut VecDeque<Token>) -> Result<BlockItem, String> {
@@ -116,6 +122,7 @@ fn parse_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
         Some(Token::Semicolon) => parse_null_statement(tokens),
         Some(Token::ReturnKeyword) => parse_return_statement(tokens),
         Some(Token::IfKeyword) => parse_if_statement(tokens),
+        Some(Token::OpenBrace) => parse_block_statement(tokens),
         Some(Token::GotoKeyword) => parse_goto_statement(tokens),
         Some(Token::Identifier(_)) => {
             if let Some(Token::Colon) = tokens.get(1) {
@@ -179,6 +186,10 @@ fn parse_if_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String>
         then_branch,
         else_branch,
     })
+}
+
+fn parse_block_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
+    Ok(Statement::Compound(parse_block(tokens)?))
 }
 
 fn parse_goto_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
@@ -437,9 +448,11 @@ mod tests {
         let expected = Program {
             function_definition: Function {
                 name: "main".to_string(),
-                body: vec![BlockItem::Statement(Statement::Return(
-                    Expression::Constant(42),
-                ))],
+                body: Block {
+                    items: vec![BlockItem::Statement(Statement::Return(
+                        Expression::Constant(42),
+                    ))],
+                },
             },
         };
 

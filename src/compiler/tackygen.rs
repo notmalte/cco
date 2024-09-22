@@ -41,16 +41,20 @@ impl TackyGen {
     }
 
     fn handle_function(&mut self, function: &ast::Function) -> tacky::Function {
+        let mut ins = self.handle_block(&function.body);
+
+        ins.push(tacky::Instruction::Return(tacky::Value::Constant(0)));
+
         tacky::Function {
             name: function.name.clone(),
-            instructions: self.handle_block_items(&function.body),
+            instructions: ins,
         }
     }
 
-    fn handle_block_items(&mut self, body: &[ast::BlockItem]) -> Vec<tacky::Instruction> {
+    fn handle_block(&mut self, block: &ast::Block) -> Vec<tacky::Instruction> {
         let mut ins = vec![];
 
-        for item in body {
+        for item in &block.items {
             match item {
                 ast::BlockItem::Declaration(declaration) => {
                     self.handle_declaration(&mut ins, declaration);
@@ -60,8 +64,6 @@ impl TackyGen {
                 }
             }
         }
-
-        ins.push(tacky::Instruction::Return(tacky::Value::Constant(0)));
 
         ins
     }
@@ -137,6 +139,9 @@ impl TackyGen {
                     identifier: label.identifier.clone(),
                 }));
                 self.handle_statement(ins, statement);
+            }
+            ast::Statement::Compound(block) => {
+                ins.extend(self.handle_block(block));
             }
             ast::Statement::Null => {}
         }

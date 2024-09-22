@@ -6,7 +6,12 @@ pub struct Program {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Function {
     pub name: String,
-    pub body: Vec<BlockItem>,
+    pub body: Block,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Block {
+    pub items: Vec<BlockItem>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -26,6 +31,7 @@ pub enum Statement {
     },
     Goto(Label),
     Labeled(Label, Box<Statement>),
+    Compound(Block),
     Null,
 }
 
