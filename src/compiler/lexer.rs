@@ -18,6 +18,11 @@ fn find_first_token(s: &str) -> Option<(Token, &str)> {
             "if" => Token::IfKeyword,
             "else" => Token::ElseKeyword,
             "goto" => Token::GotoKeyword,
+            "do" => Token::DoKeyword,
+            "while" => Token::WhileKeyword,
+            "for" => Token::ForKeyword,
+            "break" => Token::BreakKeyword,
+            "continue" => Token::ContinueKeyword,
             _ => Token::Identifier(ms.to_string()),
         };
 

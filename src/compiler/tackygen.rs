@@ -144,6 +144,11 @@ impl TackyGen {
                 ins.extend(self.handle_block(block));
             }
             ast::Statement::Null => {}
+            ast::Statement::Break { .. } => todo!(),
+            ast::Statement::Continue { .. } => todo!(),
+            ast::Statement::While { .. } => todo!(),
+            ast::Statement::DoWhile { .. } => todo!(),
+            ast::Statement::For { .. } => todo!(),
         }
     }
 

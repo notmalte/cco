@@ -15,6 +15,16 @@ pub enum Token {
     ElseKeyword,
     /// `goto`
     GotoKeyword,
+    /// `do`
+    DoKeyword,
+    /// `while`
+    WhileKeyword,
+    /// `for`
+    ForKeyword,
+    /// `break`
+    BreakKeyword,
+    /// `continue`
+    ContinueKeyword,
 
     /// e.g. `42`
     Constant(i64),

@@ -133,6 +133,11 @@ impl VariableResolver {
             Statement::Compound(block) => {
                 Statement::Compound(self.handle_block(block, merged_map)?)
             }
+            Statement::Break { .. } => todo!(),
+            Statement::Continue { .. } => todo!(),
+            Statement::While { .. } => todo!(),
+            Statement::DoWhile { .. } => todo!(),
+            Statement::For { .. } => todo!(),
         })
     }
 

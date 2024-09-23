@@ -86,6 +86,11 @@ impl LabelResolver {
             | Statement::Expression(_)
             | Statement::Goto(_)
             | Statement::Null => statement.clone(),
+            Statement::Break { .. } => todo!(),
+            Statement::Continue { .. } => todo!(),
+            Statement::While { .. } => todo!(),
+            Statement::DoWhile { .. } => todo!(),
+            Statement::For { .. } => todo!(),
         })
     }
 
@@ -129,6 +134,11 @@ impl LabelResolver {
             ),
             Statement::Compound(block) => Statement::Compound(self.rewrite_goto_in_block(block)?),
             Statement::Return(_) | Statement::Expression(_) | Statement::Null => statement.clone(),
+            Statement::Break { .. } => todo!(),
+            Statement::Continue { .. } => todo!(),
+            Statement::While { .. } => todo!(),
+            Statement::DoWhile { .. } => todo!(),
+            Statement::For { .. } => todo!(),
         })
     }
 }

@@ -1,9 +1,11 @@
 use std::collections::VecDeque;
 
+use crate::compiler::ast::LoopLabel;
+
 use super::{
     ast::{
-        AssignmentOperator, BinaryOperator, Block, BlockItem, Declaration, Expression, Function,
-        Label, Program, Statement, UnaryOperator, Variable,
+        AssignmentOperator, BinaryOperator, Block, BlockItem, Declaration, Expression,
+        ForInitializer, Function, Label, Program, Statement, UnaryOperator, Variable,
     },
     token::Token,
 };
@@ -74,8 +76,12 @@ fn parse_block(tokens: &mut VecDeque<Token>) -> Result<Block, String> {
     Ok(Block { items })
 }
 
+fn is_start_of_declaration(tokens: &VecDeque<Token>) -> bool {
+    matches!(tokens.front(), Some(Token::IntKeyword))
+}
+
 fn parse_block_item(tokens: &mut VecDeque<Token>) -> Result<BlockItem, String> {
-    if let Some(Token::IntKeyword) = tokens.front() {
+    if is_start_of_declaration(tokens) {
         parse_declaration(tokens).map(BlockItem::Declaration)
     } else {
         parse_statement(tokens).map(BlockItem::Statement)
@@ -124,6 +130,11 @@ fn parse_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
         Some(Token::IfKeyword) => parse_if_statement(tokens),
         Some(Token::OpenBrace) => parse_block_statement(tokens),
         Some(Token::GotoKeyword) => parse_goto_statement(tokens),
+        Some(Token::BreakKeyword) => parse_break_statement(tokens),
+        Some(Token::ContinueKeyword) => parse_continue_statement(tokens),
+        Some(Token::WhileKeyword) => parse_while_statement(tokens),
+        Some(Token::DoKeyword) => parse_do_while_statement(tokens),
+        Some(Token::ForKeyword) => parse_for_statement(tokens),
         Some(Token::Identifier(_)) => {
             if let Some(Token::Colon) = tokens.get(1) {
                 parse_labeled_statement(tokens)
@@ -206,6 +217,147 @@ fn parse_goto_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, Strin
     };
 
     Ok(Statement::Goto(Label { identifier: label }))
+}
+
+fn parse_break_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
+    let Some(Token::BreakKeyword) = tokens.pop_front() else {
+        return Err("Expected break keyword".to_string());
+    };
+
+    let Some(Token::Semicolon) = tokens.pop_front() else {
+        return Err("Expected semicolon".to_string());
+    };
+
+    Ok(Statement::Break {
+        label: LoopLabel::tbd(),
+    })
+}
+
+fn parse_continue_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
+    let Some(Token::ContinueKeyword) = tokens.pop_front() else {
+        return Err("Expected continue keyword".to_string());
+    };
+
+    let Some(Token::Semicolon) = tokens.pop_front() else {
+        return Err("Expected semicolon".to_string());
+    };
+
+    Ok(Statement::Continue {
+        label: LoopLabel::tbd(),
+    })
+}
+
+fn parse_while_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
+    let Some(Token::WhileKeyword) = tokens.pop_front() else {
+        return Err("Expected while keyword".to_string());
+    };
+
+    let Some(Token::OpenParen) = tokens.pop_front() else {
+        return Err("Expected open parenthesis".to_string());
+    };
+
+    let condition = parse_expression(tokens, 0)?;
+
+    let Some(Token::CloseParen) = tokens.pop_front() else {
+        return Err("Expected close parenthesis".to_string());
+    };
+
+    let body = Box::new(parse_statement(tokens)?);
+
+    Ok(Statement::While {
+        condition,
+        body,
+        label: LoopLabel::tbd(),
+    })
+}
+
+fn parse_do_while_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
+    let Some(Token::DoKeyword) = tokens.pop_front() else {
+        return Err("Expected do keyword".to_string());
+    };
+
+    let body = Box::new(parse_statement(tokens)?);
+
+    let Some(Token::WhileKeyword) = tokens.pop_front() else {
+        return Err("Expected while keyword".to_string());
+    };
+
+    let Some(Token::OpenParen) = tokens.pop_front() else {
+        return Err("Expected open parenthesis".to_string());
+    };
+
+    let condition = parse_expression(tokens, 0)?;
+
+    let Some(Token::CloseParen) = tokens.pop_front() else {
+        return Err("Expected close parenthesis".to_string());
+    };
+
+    let Some(Token::Semicolon) = tokens.pop_front() else {
+        return Err("Expected semicolon".to_string());
+    };
+
+    Ok(Statement::DoWhile {
+        body,
+        condition,
+        label: LoopLabel::tbd(),
+    })
+}
+
+fn parse_for_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
+    let Some(Token::ForKeyword) = tokens.pop_front() else {
+        return Err("Expected for keyword".to_string());
+    };
+
+    let Some(Token::OpenParen) = tokens.pop_front() else {
+        return Err("Expected open parenthesis".to_string());
+    };
+
+    let initializer = parse_for_initializer(tokens)?;
+
+    let condition = if let Some(Token::Semicolon) = tokens.front() {
+        None
+    } else {
+        Some(parse_expression(tokens, 0)?)
+    };
+
+    let Some(Token::Semicolon) = tokens.pop_front() else {
+        return Err("Expected semicolon".to_string());
+    };
+
+    let post = if let Some(Token::CloseParen) = tokens.front() {
+        None
+    } else {
+        Some(parse_expression(tokens, 0)?)
+    };
+
+    let Some(Token::CloseParen) = tokens.pop_front() else {
+        return Err("Expected close parenthesis".to_string());
+    };
+
+    let body = Box::new(parse_statement(tokens)?);
+
+    Ok(Statement::For {
+        initializer,
+        condition,
+        post,
+        body,
+        label: LoopLabel::tbd(),
+    })
+}
+
+fn parse_for_initializer(tokens: &mut VecDeque<Token>) -> Result<Option<ForInitializer>, String> {
+    if let Some(Token::Semicolon) = tokens.front() {
+        tokens.pop_front();
+        return Ok(None);
+    }
+
+    if is_start_of_declaration(tokens) {
+        let declaration = parse_declaration(tokens)?;
+        return Ok(Some(ForInitializer::Declaration(declaration)));
+    }
+
+    let expression = parse_expression(tokens, 0)?;
+    Ok(Some(ForInitializer::Expression(expression)))
 }
 
 fn parse_labeled_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
