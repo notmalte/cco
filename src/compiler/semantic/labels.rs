@@ -82,15 +82,44 @@ impl LabelResolver {
                 },
             },
             Statement::Compound(block) => Statement::Compound(self.rewrite_label_in_block(block)?),
-            Statement::Return(_)
+            Statement::While {
+                condition,
+                body,
+                label,
+            } => Statement::While {
+                condition: condition.clone(),
+                body: Box::new(self.rewrite_label_in_statement(body)?),
+                label: label.clone(),
+            },
+            Statement::DoWhile {
+                body,
+                condition,
+                label,
+            } => Statement::DoWhile {
+                body: Box::new(self.rewrite_label_in_statement(body)?),
+                condition: condition.clone(),
+                label: label.clone(),
+            },
+            Statement::For {
+                initializer,
+                condition,
+                post,
+                body,
+                label,
+            } => Statement::For {
+                initializer: initializer.clone(),
+                condition: condition.clone(),
+                post: post.clone(),
+                body: Box::new(self.rewrite_label_in_statement(body)?),
+                label: label.clone(),
+            },
+
+            Statement::Null
+            | Statement::Return(_)
             | Statement::Expression(_)
             | Statement::Goto(_)
-            | Statement::Null => statement.clone(),
-            Statement::Break { .. } => todo!(),
-            Statement::Continue { .. } => todo!(),
-            Statement::While { .. } => todo!(),
-            Statement::DoWhile { .. } => todo!(),
-            Statement::For { .. } => todo!(),
+            | Statement::Break(_)
+            | Statement::Continue(_) => statement.clone(),
         })
     }
 
@@ -133,12 +162,43 @@ impl LabelResolver {
                 Box::new(self.rewrite_goto_in_statement(statement)?),
             ),
             Statement::Compound(block) => Statement::Compound(self.rewrite_goto_in_block(block)?),
-            Statement::Return(_) | Statement::Expression(_) | Statement::Null => statement.clone(),
-            Statement::Break { .. } => todo!(),
-            Statement::Continue { .. } => todo!(),
-            Statement::While { .. } => todo!(),
-            Statement::DoWhile { .. } => todo!(),
-            Statement::For { .. } => todo!(),
+            Statement::While {
+                condition,
+                body,
+                label,
+            } => Statement::While {
+                condition: condition.clone(),
+                body: Box::new(self.rewrite_goto_in_statement(body)?),
+                label: label.clone(),
+            },
+            Statement::DoWhile {
+                body,
+                condition,
+                label,
+            } => Statement::DoWhile {
+                body: Box::new(self.rewrite_goto_in_statement(body)?),
+                condition: condition.clone(),
+                label: label.clone(),
+            },
+            Statement::For {
+                initializer,
+                condition,
+                post,
+                body,
+                label,
+            } => Statement::For {
+                initializer: initializer.clone(),
+                condition: condition.clone(),
+                post: post.clone(),
+                body: Box::new(self.rewrite_goto_in_statement(body)?),
+                label: label.clone(),
+            },
+
+            Statement::Null
+            | Statement::Return(_)
+            | Statement::Expression(_)
+            | Statement::Break(_)
+            | Statement::Continue(_) => statement.clone(),
         })
     }
 }

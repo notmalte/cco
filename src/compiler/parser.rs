@@ -228,9 +228,7 @@ fn parse_break_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, Stri
         return Err("Expected semicolon".to_string());
     };
 
-    Ok(Statement::Break {
-        label: LoopLabel::tbd(),
-    })
+    Ok(Statement::Break(LoopLabel::tbd()))
 }
 
 fn parse_continue_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
@@ -242,9 +240,7 @@ fn parse_continue_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, S
         return Err("Expected semicolon".to_string());
     };
 
-    Ok(Statement::Continue {
-        label: LoopLabel::tbd(),
-    })
+    Ok(Statement::Continue(LoopLabel::tbd()))
 }
 
 fn parse_while_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {

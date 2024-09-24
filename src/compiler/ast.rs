@@ -32,12 +32,8 @@ pub enum Statement {
     Goto(Label),
     Labeled(Label, Box<Statement>),
     Compound(Block),
-    Break {
-        label: LoopLabel,
-    },
-    Continue {
-        label: LoopLabel,
-    },
+    Break(LoopLabel),
+    Continue(LoopLabel),
     While {
         condition: Expression,
         body: Box<Statement>,

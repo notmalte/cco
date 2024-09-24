@@ -1,7 +1,7 @@
 use crate::compiler::{
     ast::{
-        Block, BlockItem, Declaration, Expression, Function, Program, Statement, UnaryOperator,
-        Variable,
+        Block, BlockItem, Declaration, Expression, ForInitializer, Function, Program, Statement,
+        UnaryOperator, Variable,
     },
     constants::SEMANTIC_VAR_PREFIX,
 };
@@ -102,53 +102,96 @@ impl VariableResolver {
     fn handle_statement(
         &mut self,
         statement: &Statement,
-        merged_map: &VariableMap,
+        map: &VariableMap,
     ) -> Result<Statement, String> {
         Ok(match statement {
-            Statement::Return(expr) => {
-                Statement::Return(Self::handle_expression(expr, merged_map)?)
-            }
+            Statement::Return(expr) => Statement::Return(Self::handle_expression(expr, map)?),
             Statement::Expression(expr) => {
-                Statement::Expression(Self::handle_expression(expr, merged_map)?)
+                Statement::Expression(Self::handle_expression(expr, map)?)
             }
             Statement::If {
                 condition,
                 then_branch,
                 else_branch,
             } => Statement::If {
-                condition: Self::handle_expression(condition, merged_map)?,
-                then_branch: Box::new(self.handle_statement(then_branch, merged_map)?),
+                condition: Self::handle_expression(condition, map)?,
+                then_branch: Box::new(self.handle_statement(then_branch, map)?),
                 else_branch: if let Some(else_branch) = else_branch {
-                    Some(Box::new(self.handle_statement(else_branch, merged_map)?))
+                    Some(Box::new(self.handle_statement(else_branch, map)?))
                 } else {
                     None
                 },
             },
-            Statement::Goto(label) => Statement::Goto(label.clone()),
             Statement::Labeled(label, statement) => Statement::Labeled(
                 label.clone(),
-                Box::new(self.handle_statement(statement, merged_map)?),
+                Box::new(self.handle_statement(statement, map)?),
             ),
-            Statement::Null => Statement::Null,
-            Statement::Compound(block) => {
-                Statement::Compound(self.handle_block(block, merged_map)?)
+            Statement::Compound(block) => Statement::Compound(self.handle_block(block, map)?),
+            Statement::While {
+                condition,
+                body,
+                label,
+            } => Statement::While {
+                condition: Self::handle_expression(condition, map)?,
+                body: Box::new(self.handle_statement(body, map)?),
+                label: label.clone(),
+            },
+            Statement::DoWhile {
+                body,
+                condition,
+                label,
+            } => Statement::DoWhile {
+                body: Box::new(self.handle_statement(body, map)?),
+                condition: Self::handle_expression(condition, map)?,
+                label: label.clone(),
+            },
+            Statement::For {
+                initializer,
+                condition,
+                post,
+                body,
+                label,
+            } => {
+                let mut inner_map = VariableMap::new();
+
+                let initializer = match initializer {
+                    Some(ForInitializer::Declaration(declaration)) => {
+                        let declaration =
+                            self.handle_declaration(declaration, map, &mut inner_map)?;
+                        Some(ForInitializer::Declaration(declaration))
+                    }
+                    Some(ForInitializer::Expression(expr)) => Some(ForInitializer::Expression(
+                        Self::handle_expression(expr, map)?,
+                    )),
+                    None => None,
+                };
+
+                let mut merged_map = map.clone();
+                merged_map.extend(inner_map.clone());
+
+                let condition = Self::handle_opt_expression(condition, &merged_map)?;
+                let post = Self::handle_opt_expression(post, &merged_map)?;
+                let body = Box::new(self.handle_statement(body, &merged_map)?);
+
+                Statement::For {
+                    initializer,
+                    condition,
+                    post,
+                    body,
+                    label: label.clone(),
+                }
             }
-            Statement::Break { .. } => todo!(),
-            Statement::Continue { .. } => todo!(),
-            Statement::While { .. } => todo!(),
-            Statement::DoWhile { .. } => todo!(),
-            Statement::For { .. } => todo!(),
+            Statement::Null | Statement::Goto(_) | Statement::Break(_) | Statement::Continue(_) => {
+                statement.clone()
+            }
         })
     }
 
-    fn handle_expression(
-        expr: &Expression,
-        merged_map: &VariableMap,
-    ) -> Result<Expression, String> {
+    fn handle_expression(expr: &Expression, map: &VariableMap) -> Result<Expression, String> {
         Ok(match expr {
             Expression::Constant(_) => expr.clone(),
             Expression::Variable(var) => {
-                if let Some(new_identifier) = merged_map.get(&var.identifier) {
+                if let Some(new_identifier) = map.get(&var.identifier) {
                     Expression::Variable(Variable {
                         identifier: new_identifier.clone(),
                     })
@@ -168,13 +211,13 @@ impl VariableResolver {
                 }
                 Expression::Unary {
                     op: *op,
-                    expr: Box::new(Self::handle_expression(expr, merged_map)?),
+                    expr: Box::new(Self::handle_expression(expr, map)?),
                 }
             }
             Expression::Binary { op, lhs, rhs } => Expression::Binary {
                 op: *op,
-                lhs: Box::new(Self::handle_expression(lhs, merged_map)?),
-                rhs: Box::new(Self::handle_expression(rhs, merged_map)?),
+                lhs: Box::new(Self::handle_expression(lhs, map)?),
+                rhs: Box::new(Self::handle_expression(rhs, map)?),
             },
             Expression::Assignment { op, lhs, rhs } => {
                 let Expression::Variable(_) = **lhs else {
@@ -182,8 +225,8 @@ impl VariableResolver {
                 };
                 Expression::Assignment {
                     op: *op,
-                    lhs: Box::new(Self::handle_expression(lhs, merged_map)?),
-                    rhs: Box::new(Self::handle_expression(rhs, merged_map)?),
+                    lhs: Box::new(Self::handle_expression(lhs, map)?),
+                    rhs: Box::new(Self::handle_expression(rhs, map)?),
                 }
             }
             Expression::Conditional {
@@ -191,10 +234,21 @@ impl VariableResolver {
                 then_expr,
                 else_expr,
             } => Expression::Conditional {
-                condition: Box::new(Self::handle_expression(condition, merged_map)?),
-                then_expr: Box::new(Self::handle_expression(then_expr, merged_map)?),
-                else_expr: Box::new(Self::handle_expression(else_expr, merged_map)?),
+                condition: Box::new(Self::handle_expression(condition, map)?),
+                then_expr: Box::new(Self::handle_expression(then_expr, map)?),
+                else_expr: Box::new(Self::handle_expression(else_expr, map)?),
             },
         })
+    }
+
+    fn handle_opt_expression(
+        opt_expr: &Option<Expression>,
+        map: &VariableMap,
+    ) -> Result<Option<Expression>, String> {
+        if let Some(expr) = opt_expr {
+            Ok(Some(Self::handle_expression(expr, map)?))
+        } else {
+            Ok(None)
+        }
     }
 }
