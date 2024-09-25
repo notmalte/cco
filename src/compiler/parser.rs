@@ -347,11 +347,12 @@ fn parse_for_initializer(tokens: &mut VecDeque<Token>) -> Result<Option<ForIniti
 
     if is_start_of_declaration(tokens) {
         let declaration = parse_declaration(tokens)?;
-        return Ok(Some(ForInitializer::Declaration(declaration)));
+        Ok(Some(ForInitializer::Declaration(declaration)))
+    } else {
+        let expression = parse_expression(tokens, 0)?;
+        tokens.pop_front();
+        Ok(Some(ForInitializer::Expression(expression)))
     }
-
-    let expression = parse_expression(tokens, 0)?;
-    Ok(Some(ForInitializer::Expression(expression)))
 }
 
 fn parse_labeled_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
