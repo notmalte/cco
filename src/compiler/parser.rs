@@ -1,7 +1,5 @@
 use std::collections::VecDeque;
 
-use crate::compiler::ast::LoopLabel;
-
 use super::{
     ast::{
         AssignmentOperator, BinaryOperator, Block, BlockItem, Declaration, Expression,
@@ -228,7 +226,7 @@ fn parse_break_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, Stri
         return Err("Expected semicolon".to_string());
     };
 
-    Ok(Statement::Break(LoopLabel::tbd()))
+    Ok(Statement::Break(None))
 }
 
 fn parse_continue_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
@@ -240,7 +238,7 @@ fn parse_continue_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, S
         return Err("Expected semicolon".to_string());
     };
 
-    Ok(Statement::Continue(LoopLabel::tbd()))
+    Ok(Statement::Continue(None))
 }
 
 fn parse_while_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
@@ -263,7 +261,7 @@ fn parse_while_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, Stri
     Ok(Statement::While {
         condition,
         body,
-        label: LoopLabel::tbd(),
+        label: None,
     })
 }
 
@@ -295,7 +293,7 @@ fn parse_do_while_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, S
     Ok(Statement::DoWhile {
         body,
         condition,
-        label: LoopLabel::tbd(),
+        label: None,
     })
 }
 
@@ -337,7 +335,7 @@ fn parse_for_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String
         condition,
         post,
         body,
-        label: LoopLabel::tbd(),
+        label: None,
     })
 }
 

@@ -32,24 +32,24 @@ pub enum Statement {
     Goto(Label),
     Labeled(Label, Box<Statement>),
     Compound(Block),
-    Break(LoopLabel),
-    Continue(LoopLabel),
+    Break(Option<LoopLabel>),
+    Continue(Option<LoopLabel>),
     While {
         condition: Expression,
         body: Box<Statement>,
-        label: LoopLabel,
+        label: Option<LoopLabel>,
     },
     DoWhile {
         body: Box<Statement>,
         condition: Expression,
-        label: LoopLabel,
+        label: Option<LoopLabel>,
     },
     For {
         initializer: Option<ForInitializer>,
         condition: Option<Expression>,
         post: Option<Expression>,
         body: Box<Statement>,
-        label: LoopLabel,
+        label: Option<LoopLabel>,
     },
     Null,
 }
@@ -152,12 +152,4 @@ pub struct Label {
 #[derive(Debug, Clone, PartialEq)]
 pub struct LoopLabel {
     pub identifier: String,
-}
-
-impl LoopLabel {
-    pub fn tbd() -> Self {
-        Self {
-            identifier: "TO_BE_DEFINED".to_string(),
-        }
-    }
 }
