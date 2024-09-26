@@ -14,12 +14,12 @@ pub struct VariableResolver {
 }
 
 impl VariableResolver {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self { counter: 0 }
     }
 
-    pub fn analyze(&mut self, program: &Program) -> Result<Program, String> {
-        self.handle_program(program)
+    pub fn analyze(program: &Program) -> Result<Program, String> {
+        Self::new().handle_program(program)
     }
 
     fn fresh_variable(&mut self, suffix: Option<&str>) -> Variable {

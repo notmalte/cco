@@ -27,19 +27,20 @@ pub fn compile(input: &std::path::PathBuf, output: &std::path::PathBuf, stage: C
 
     let str = std::fs::read_to_string(input).unwrap();
 
-    let tokens = lexer::tokenize(&str).unwrap();
+    let tokens = lexer::tokenize(&str).expect("Error during lexing");
     if stage == CompilerStage::Lex {
         dbg!(tokens);
         return;
     }
 
-    let ast_result = parser::parse(&tokens).unwrap();
+    let ast_result = parser::parse(&tokens).expect("Error during parsing");
     if stage == CompilerStage::Parse {
         dbg!(&ast_result);
         return;
     }
 
-    let validated_ast_result = semantic::analyze(&ast_result).unwrap();
+    let validated_ast_result =
+        semantic::analyze(&ast_result).expect("Error during semantic analysis");
     if stage == CompilerStage::Validate {
         dbg!(&validated_ast_result);
         return;

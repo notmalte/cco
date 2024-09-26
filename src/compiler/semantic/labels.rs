@@ -5,24 +5,26 @@ use crate::compiler::{
 use std::collections::HashMap;
 
 pub struct LabelResolver {
-    map: HashMap<String, String>,
     counter: usize,
+    map: HashMap<String, String>,
 }
 
 impl LabelResolver {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             map: HashMap::new(),
             counter: 0,
         }
     }
 
-    pub fn analyze(&mut self, program: &Program) -> Result<Program, String> {
+    pub fn analyze(program: &Program) -> Result<Program, String> {
+        let mut resolver = Self::new();
+
         let mut body = program.function_definition.body.clone();
 
-        body = self.rewrite_label_in_block(&body)?;
+        body = resolver.rewrite_label_in_block(&body)?;
 
-        body = self.rewrite_goto_in_block(&body)?;
+        body = resolver.rewrite_goto_in_block(&body)?;
 
         Ok(Program {
             function_definition: Function {
