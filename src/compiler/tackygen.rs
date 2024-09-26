@@ -34,6 +34,18 @@ impl TackyGen {
         tacky::Label { identifier: name }
     }
 
+    fn break_label(label: &ast::LoopLabel) -> tacky::Label {
+        tacky::Label {
+            identifier: format!("{}.break", label.identifier),
+        }
+    }
+
+    fn continue_label(label: &ast::LoopLabel) -> tacky::Label {
+        tacky::Label {
+            identifier: format!("{}.continue", label.identifier),
+        }
+    }
+
     fn handle_program(&mut self, program: &ast::Program) -> tacky::Program {
         tacky::Program {
             function_definition: self.handle_function(&program.function_definition),
@@ -143,12 +155,106 @@ impl TackyGen {
             ast::Statement::Compound(block) => {
                 ins.extend(self.handle_block(block));
             }
+            ast::Statement::Break(label) => {
+                let Some(label) = label else {
+                    unreachable!();
+                };
+
+                ins.push(tacky::Instruction::Jump {
+                    target: Self::break_label(label),
+                });
+            }
+            ast::Statement::Continue(label) => {
+                let Some(label) = label else {
+                    unreachable!();
+                };
+
+                ins.push(tacky::Instruction::Jump {
+                    target: Self::continue_label(label),
+                });
+            }
+            ast::Statement::While {
+                condition,
+                body,
+                label,
+            } => {
+                let Some(label) = label else {
+                    unreachable!();
+                };
+
+                ins.push(tacky::Instruction::Label(Self::continue_label(label)));
+                let condition_value = self.handle_expression(ins, condition);
+                ins.push(tacky::Instruction::JumpIfZero {
+                    condition: condition_value,
+                    target: Self::break_label(label),
+                });
+                self.handle_statement(ins, body);
+                ins.push(tacky::Instruction::Jump {
+                    target: Self::continue_label(label),
+                });
+                ins.push(tacky::Instruction::Label(Self::break_label(label)));
+            }
+            ast::Statement::DoWhile {
+                body,
+                condition,
+                label,
+            } => {
+                let Some(label) = label else {
+                    unreachable!();
+                };
+                let start_label = self.fresh_label(Some("do_while_start"));
+
+                ins.push(tacky::Instruction::Label(start_label.clone()));
+                self.handle_statement(ins, body);
+                ins.push(tacky::Instruction::Label(Self::continue_label(label)));
+                let condition_value = self.handle_expression(ins, condition);
+                ins.push(tacky::Instruction::JumpIfNotZero {
+                    condition: condition_value,
+                    target: start_label.clone(),
+                });
+                ins.push(tacky::Instruction::Label(Self::break_label(label)));
+            }
+            ast::Statement::For {
+                initializer,
+                condition,
+                post,
+                body,
+                label,
+            } => {
+                let Some(label) = label else {
+                    unreachable!();
+                };
+                let start_label = self.fresh_label(Some("for_start"));
+
+                if let Some(initializer) = initializer {
+                    match initializer {
+                        ast::ForInitializer::Declaration(declaration) => {
+                            self.handle_declaration(ins, declaration);
+                        }
+                        ast::ForInitializer::Expression(expression) => {
+                            self.handle_expression(ins, expression);
+                        }
+                    }
+                }
+                ins.push(tacky::Instruction::Label(start_label.clone()));
+                if let Some(condition) = condition {
+                    let condition_value = self.handle_expression(ins, condition);
+                    ins.push(tacky::Instruction::JumpIfZero {
+                        condition: condition_value,
+                        target: Self::break_label(label),
+                    });
+                }
+                self.handle_statement(ins, body);
+                ins.push(tacky::Instruction::Label(Self::continue_label(label)));
+                if let Some(post) = post {
+                    self.handle_expression(ins, post);
+                }
+                ins.push(tacky::Instruction::Jump {
+                    target: start_label.clone(),
+                });
+                ins.push(tacky::Instruction::Label(Self::break_label(label)));
+            }
             ast::Statement::Null => {}
-            ast::Statement::Break { .. } => todo!(),
-            ast::Statement::Continue { .. } => todo!(),
-            ast::Statement::While { .. } => todo!(),
-            ast::Statement::DoWhile { .. } => todo!(),
-            ast::Statement::For { .. } => todo!(),
         }
     }
 
