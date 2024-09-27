@@ -2,8 +2,7 @@ use clap::Parser;
 use compiler::CompilerStage;
 
 mod compiler;
-mod linker;
-mod preprocessor;
+mod driver;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -14,7 +13,7 @@ struct Args {
     #[arg(
         long,
         group = "stage",
-        conflicts_with = "assembly",
+        conflicts_with_all = &["assembly", "object"],
         help = "Only run lexer"
     )]
     lex: bool,
@@ -22,7 +21,7 @@ struct Args {
     #[arg(
         long,
         group = "stage",
-        conflicts_with = "assembly",
+        conflicts_with_all = &["assembly", "object"],
         help = "Only run lexer + parser"
     )]
     parse: bool,
@@ -30,7 +29,7 @@ struct Args {
     #[arg(
         long,
         group = "stage",
-        conflicts_with = "assembly",
+        conflicts_with_all = &["assembly", "object"],
         help = "Only run lexer + parser + semantic analysis"
     )]
     validate: bool,
@@ -38,7 +37,7 @@ struct Args {
     #[arg(
         long,
         group = "stage",
-        conflicts_with = "assembly",
+        conflicts_with_all = &["assembly", "object"],
         help = "Only run lexer + parser + semantic analysis + tacky generator"
     )]
     tacky: bool,
@@ -46,13 +45,16 @@ struct Args {
     #[arg(
         long,
         group = "stage",
-        conflicts_with = "assembly",
+        conflicts_with_all = &["assembly", "object"],
         help = "Only run lexer + parser + semantic analysis + tacky generator + codegen"
     )]
     codegen: bool,
 
     #[arg(long, short = 'S', help = "Emit assembly code, but do not link")]
     assembly: bool,
+
+    #[arg(long, short = 'c', help = "Emit object code, but do not link")]
+    object: bool,
 }
 
 fn main() {
@@ -69,12 +71,15 @@ fn main() {
     let preprocessed_filename = format!("{}.i", input_filename_stem);
     let preprocessed_path = input_path.with_file_name(preprocessed_filename);
 
+    let object_filename = format!("{}.o", input_filename_stem);
+    let object_path = input_path.with_file_name(object_filename);
+
     let assembly_filename = format!("{}.s", input_filename_stem);
     let assembly_path = input_path.with_file_name(assembly_filename);
 
     let binary_path = input_path.with_file_name(input_filename_stem);
 
-    preprocessor::preprocess(&input_path, &preprocessed_path);
+    driver::preprocess(&input_path, &preprocessed_path);
 
     let stage = if args.lex {
         CompilerStage::Lex
@@ -97,6 +102,11 @@ fn main() {
         return;
     }
 
-    linker::link(&assembly_path, &binary_path);
+    if args.object {
+        driver::assemble(&assembly_path, &object_path);
+    } else {
+        driver::assemble_and_link(&assembly_path, &binary_path);
+    }
+
     std::fs::remove_file(&assembly_path).unwrap();
 }
