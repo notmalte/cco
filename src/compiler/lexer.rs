@@ -79,6 +79,7 @@ fn find_first_token(s: &str) -> Option<(Token, &str)> {
         ("=", Token::Equal),
         ("?", Token::Question),
         (":", Token::Colon),
+        (",", Token::Comma),
     ];
 
     tokens

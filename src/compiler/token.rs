@@ -69,6 +69,8 @@ pub enum Token {
     Question,
     /// `:`
     Colon,
+    /// `,`
+    Comma,
 
     /// `<<`
     LessLess,
