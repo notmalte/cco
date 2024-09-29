@@ -550,17 +550,15 @@ fn parse_factor(tokens: &mut VecDeque<Token>) -> Result<Expression, String> {
 
                 let mut arguments = vec![];
 
-                while tokens.front() != Some(&Token::CloseParen) {
-                    if !arguments.is_empty() {
-                        let Some(Token::Comma) = tokens.pop_front() else {
-                            return Err("Expected comma".to_string());
-                        };
-                    }
+                if tokens.front() != Some(&Token::CloseParen) {
+                    loop {
+                        arguments.push(parse_expression(tokens, 0)?);
 
-                    arguments.push(parse_expression(tokens, 0)?);
-
-                    if tokens.front() == Some(&Token::CloseParen) {
-                        break;
+                        if let Some(Token::Comma) = tokens.front() {
+                            tokens.pop_front();
+                        } else {
+                            break;
+                        }
                     }
                 }
 
