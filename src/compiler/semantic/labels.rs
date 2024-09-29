@@ -20,18 +20,20 @@ impl LabelResolver {
     pub fn analyze(program: &Program) -> Result<Program, String> {
         let mut resolver = Self::new();
 
-        let mut body = program.function_definition.body.clone();
+        todo!()
 
-        body = resolver.rewrite_label_in_block(&body)?;
+        // let mut body = program.function_definition.body.clone();
 
-        body = resolver.rewrite_goto_in_block(&body)?;
+        // body = resolver.rewrite_label_in_block(&body)?;
 
-        Ok(Program {
-            function_definition: Function {
-                name: program.function_definition.name.clone(),
-                body,
-            },
-        })
+        // body = resolver.rewrite_goto_in_block(&body)?;
+
+        // Ok(Program {
+        //     function_definition: Function {
+        //         name: program.function_definition.name.clone(),
+        //         body,
+        //     },
+        // })
     }
 
     fn fresh_label(&mut self, suffix: Option<&str>) -> Label {

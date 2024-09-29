@@ -15,12 +15,14 @@ impl LoopLabeler {
     pub fn analyze(program: &Program) -> Result<Program, String> {
         let mut labeler = Self::new();
 
-        Ok(Program {
-            function_definition: Function {
-                name: program.function_definition.name.clone(),
-                body: labeler.handle_block(&program.function_definition.body.clone(), None)?,
-            },
-        })
+        todo!()
+
+        // Ok(Program {
+        //     function_definition: Function {
+        //         name: program.function_definition.name.clone(),
+        //         body: labeler.handle_block(&program.function_definition.body.clone(), None)?,
+        //     },
+        // })
     }
 
     fn fresh_loop_label(&mut self, suffix: Option<&str>) -> LoopLabel {

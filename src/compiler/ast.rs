@@ -1,12 +1,6 @@
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program {
-    pub function_definition: Function,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Function {
-    pub name: String,
-    pub body: Block,
+    pub functions: Vec<FunctionDeclaration>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -56,14 +50,27 @@ pub enum Statement {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ForInitializer {
-    Declaration(Declaration),
+    VariableDeclaration(VariableDeclaration),
     Expression(Expression),
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Declaration {
+pub enum Declaration {
+    Variable(VariableDeclaration),
+    Function(FunctionDeclaration),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct VariableDeclaration {
     pub variable: Variable,
     pub initializer: Option<Expression>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct FunctionDeclaration {
+    pub function: Function,
+    pub parameters: Vec<Variable>,
+    pub body: Option<Block>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -88,6 +95,10 @@ pub enum Expression {
         condition: Box<Expression>,
         then_expr: Box<Expression>,
         else_expr: Box<Expression>,
+    },
+    FunctionCall {
+        function: Function,
+        arguments: Vec<Expression>,
     },
 }
 
@@ -151,5 +162,10 @@ pub struct Label {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct LoopLabel {
+    pub identifier: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Function {
     pub identifier: String,
 }

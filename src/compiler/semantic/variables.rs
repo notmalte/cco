@@ -33,16 +33,20 @@ impl VariableResolver {
     }
 
     fn handle_program(&mut self, program: &Program) -> Result<Program, String> {
-        Ok(Program {
-            function_definition: self.handle_function(&program.function_definition)?,
-        })
+        todo!()
+
+        // Ok(Program {
+        //     function_definition: self.handle_function(&program.function_definition)?,
+        // })
     }
 
     fn handle_function(&mut self, function: &Function) -> Result<Function, String> {
-        Ok(Function {
-            name: function.name.clone(),
-            body: self.handle_block(&function.body, &HashMap::new())?,
-        })
+        todo!()
+
+        // Ok(Function {
+        //     name: function.name.clone(),
+        //     body: self.handle_block(&function.body, &HashMap::new())?,
+        // })
     }
 
     fn handle_block(&mut self, block: &Block, outer_map: &VariableMap) -> Result<Block, String> {
@@ -73,30 +77,32 @@ impl VariableResolver {
         outer_map: &VariableMap,
         inner_map: &mut VariableMap,
     ) -> Result<Declaration, String> {
-        if inner_map.contains_key(&declaration.variable.identifier) {
-            return Err(format!(
-                "Variable {} already declared",
-                declaration.variable.identifier
-            ));
-        }
+        todo!()
 
-        let new_variable = self.fresh_variable(Some(&declaration.variable.identifier));
-        inner_map.insert(
-            declaration.variable.identifier.clone(),
-            new_variable.identifier.clone(),
-        );
+        // if inner_map.contains_key(&declaration.variable.identifier) {
+        //     return Err(format!(
+        //         "Variable {} already declared",
+        //         declaration.variable.identifier
+        //     ));
+        // }
 
-        let mut merged_map = outer_map.clone();
-        merged_map.extend(inner_map.clone());
+        // let new_variable = self.fresh_variable(Some(&declaration.variable.identifier));
+        // inner_map.insert(
+        //     declaration.variable.identifier.clone(),
+        //     new_variable.identifier.clone(),
+        // );
 
-        Ok(Declaration {
-            variable: new_variable,
-            initializer: declaration
-                .initializer
-                .as_ref()
-                .map(|expr| Self::handle_expression(expr, &merged_map))
-                .transpose()?,
-        })
+        // let mut merged_map = outer_map.clone();
+        // merged_map.extend(inner_map.clone());
+
+        // Ok(Declaration {
+        //     variable: new_variable,
+        //     initializer: declaration
+        //         .initializer
+        //         .as_ref()
+        //         .map(|expr| Self::handle_expression(expr, &merged_map))
+        //         .transpose()?,
+        // })
     }
 
     fn handle_statement(
@@ -154,32 +160,34 @@ impl VariableResolver {
             } => {
                 let mut inner_map = VariableMap::new();
 
-                let initializer = match initializer {
-                    Some(ForInitializer::Declaration(declaration)) => {
-                        let declaration =
-                            self.handle_declaration(declaration, map, &mut inner_map)?;
-                        Some(ForInitializer::Declaration(declaration))
-                    }
-                    Some(ForInitializer::Expression(expr)) => Some(ForInitializer::Expression(
-                        Self::handle_expression(expr, map)?,
-                    )),
-                    None => None,
-                };
+                todo!()
 
-                let mut merged_map = map.clone();
-                merged_map.extend(inner_map.clone());
+                // let initializer = match initializer {
+                //     Some(ForInitializer::Declaration(declaration)) => {
+                //         let declaration =
+                //             self.handle_declaration(declaration, map, &mut inner_map)?;
+                //         Some(ForInitializer::Declaration(declaration))
+                //     }
+                //     Some(ForInitializer::Expression(expr)) => Some(ForInitializer::Expression(
+                //         Self::handle_expression(expr, map)?,
+                //     )),
+                //     None => None,
+                // };
 
-                let condition = Self::handle_opt_expression(condition, &merged_map)?;
-                let post = Self::handle_opt_expression(post, &merged_map)?;
-                let body = Box::new(self.handle_statement(body, &merged_map)?);
+                // let mut merged_map = map.clone();
+                // merged_map.extend(inner_map.clone());
 
-                Statement::For {
-                    initializer,
-                    condition,
-                    post,
-                    body,
-                    label: label.clone(),
-                }
+                // let condition = Self::handle_opt_expression(condition, &merged_map)?;
+                // let post = Self::handle_opt_expression(post, &merged_map)?;
+                // let body = Box::new(self.handle_statement(body, &merged_map)?);
+
+                // Statement::For {
+                //     initializer,
+                //     condition,
+                //     post,
+                //     body,
+                //     label: label.clone(),
+                // }
             }
             Statement::Null | Statement::Goto(_) | Statement::Break(_) | Statement::Continue(_) => {
                 statement.clone()
@@ -238,6 +246,10 @@ impl VariableResolver {
                 then_expr: Box::new(Self::handle_expression(then_expr, map)?),
                 else_expr: Box::new(Self::handle_expression(else_expr, map)?),
             },
+            Expression::FunctionCall {
+                function,
+                arguments,
+            } => todo!(),
         })
     }
 
