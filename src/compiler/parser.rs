@@ -23,20 +23,20 @@ pub fn parse(tokens: &[Token]) -> Result<Program, String> {
 
 fn parse_program(tokens: &mut VecDeque<Token>) -> Result<Program, String> {
     Ok(Program {
-        functions: parse_function_declarations(tokens)?,
+        function_declarations: parse_function_declarations(tokens)?,
     })
 }
 
 fn parse_function_declarations(
     tokens: &mut VecDeque<Token>,
 ) -> Result<Vec<FunctionDeclaration>, String> {
-    let mut functions = vec![];
+    let mut function_declarations = vec![];
 
     while !tokens.is_empty() {
-        functions.push(parse_function_declaration(tokens)?);
+        function_declarations.push(parse_function_declaration(tokens)?);
     }
 
-    Ok(functions)
+    Ok(function_declarations)
 }
 
 fn parse_function_declaration(tokens: &mut VecDeque<Token>) -> Result<FunctionDeclaration, String> {
@@ -686,7 +686,7 @@ mod tests {
         ];
 
         let expected = Program {
-            functions: vec![FunctionDeclaration {
+            function_declarations: vec![FunctionDeclaration {
                 function: Function {
                     identifier: "main".to_string(),
                 },

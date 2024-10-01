@@ -20,6 +20,8 @@ impl LabelResolver {
     pub fn analyze(program: &Program) -> Result<Program, String> {
         let mut resolver = Self::new();
 
+        return Ok(program.clone());
+
         todo!()
 
         // let mut body = program.function_definition.body.clone();

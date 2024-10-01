@@ -1,15 +1,15 @@
 use crate::compiler::ast::Program;
 
-mod labels;
-mod loops;
-mod variables;
+mod identifier_resolution;
+mod label_resolution;
+mod loop_labeling;
 
-use labels::LabelResolver;
-use loops::LoopLabeler;
-use variables::VariableResolver;
+use identifier_resolution::IdentifierResolver;
+use label_resolution::LabelResolver;
+use loop_labeling::LoopLabeler;
 
 pub fn analyze(program: &Program) -> Result<Program, String> {
-    VariableResolver::analyze(program)
+    IdentifierResolver::analyze(program)
         .and_then(|program| LabelResolver::analyze(&program))
         .and_then(|program| LoopLabeler::analyze(&program))
 }

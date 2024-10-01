@@ -15,6 +15,8 @@ impl LoopLabeler {
     pub fn analyze(program: &Program) -> Result<Program, String> {
         let mut labeler = Self::new();
 
+        return Ok(program.clone());
+
         todo!()
 
         // Ok(Program {
