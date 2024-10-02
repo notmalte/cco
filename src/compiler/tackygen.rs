@@ -47,24 +47,45 @@ impl TackyGen {
     }
 
     fn handle_program(&mut self, program: &ast::Program) -> tacky::Program {
-        todo!()
+        let mut function_definitions = Vec::new();
 
-        // tacky::Program {
-        //     function_definition: self.handle_function(&program.function_definition),
-        // }
+        for declaration in &program.function_declarations {
+            if let Some(definition) = self.handle_function_declaration(declaration) {
+                function_definitions.push(definition);
+            }
+        }
+
+        tacky::Program {
+            function_definitions,
+        }
     }
 
-    fn handle_function(&mut self, function: &ast::Function) -> tacky::Function {
-        todo!()
+    fn handle_function_declaration(
+        &mut self,
+        fd: &ast::FunctionDeclaration,
+    ) -> Option<tacky::FunctionDefinition> {
+        let Some(body) = &fd.body else {
+            return None;
+        };
 
-        // let mut ins = self.handle_block(&function.body);
+        let mut instructions = self.handle_block(body);
 
-        // ins.push(tacky::Instruction::Return(tacky::Value::Constant(0)));
+        instructions.push(tacky::Instruction::Return(tacky::Value::Constant(0)));
 
-        // tacky::Function {
-        //     name: function.name.clone(),
-        //     instructions: ins,
-        // }
+        Some(tacky::FunctionDefinition {
+            function: tacky::Function {
+                identifier: fd.function.identifier.clone(),
+            },
+            parameters: fd
+                .parameters
+                .iter()
+                .cloned()
+                .map(|p| tacky::Variable {
+                    identifier: p.identifier,
+                })
+                .collect(),
+            instructions,
+        })
     }
 
     fn handle_block(&mut self, block: &ast::Block) -> Vec<tacky::Instruction> {
@@ -73,7 +94,7 @@ impl TackyGen {
         for item in &block.items {
             match item {
                 ast::BlockItem::Declaration(declaration) => {
-                    self.handle_declaration(&mut ins, declaration);
+                    self.handle_local_declaration(&mut ins, declaration);
                 }
                 ast::BlockItem::Statement(statement) => {
                     self.handle_statement(&mut ins, statement);
@@ -84,23 +105,32 @@ impl TackyGen {
         ins
     }
 
-    fn handle_declaration(
+    fn handle_local_declaration(
         &mut self,
         ins: &mut Vec<tacky::Instruction>,
         declaration: &ast::Declaration,
     ) {
-        todo!()
+        match declaration {
+            ast::Declaration::Variable(vd) => self.handle_variable_declaration(ins, vd),
+            ast::Declaration::Function(_) => {}
+        }
+    }
 
-        // if let Some(initializer) = &declaration.initializer {
-        //     let value = self.handle_expression(ins, initializer);
-        //     let variable = tacky::Variable {
-        //         identifier: declaration.variable.identifier.clone(),
-        //     };
-        //     ins.push(tacky::Instruction::Copy {
-        //         src: value,
-        //         dst: variable,
-        //     });
-        // }
+    fn handle_variable_declaration(
+        &mut self,
+        ins: &mut Vec<tacky::Instruction>,
+        vd: &ast::VariableDeclaration,
+    ) {
+        if let Some(initializer) = &vd.initializer {
+            let value = self.handle_expression(ins, initializer);
+
+            ins.push(tacky::Instruction::Copy {
+                src: value,
+                dst: tacky::Variable {
+                    identifier: vd.variable.identifier.clone(),
+                },
+            });
+        }
     }
 
     fn handle_statement(&mut self, ins: &mut Vec<tacky::Instruction>, statement: &ast::Statement) {
@@ -232,35 +262,33 @@ impl TackyGen {
                 };
                 let start_label = self.fresh_label(Some("for_start"));
 
-                todo!()
-
-                // if let Some(initializer) = initializer {
-                //     match initializer {
-                //         ast::ForInitializer::Declaration(declaration) => {
-                //             self.handle_declaration(ins, declaration);
-                //         }
-                //         ast::ForInitializer::Expression(expression) => {
-                //             self.handle_expression(ins, expression);
-                //         }
-                //     }
-                // }
-                // ins.push(tacky::Instruction::Label(start_label.clone()));
-                // if let Some(condition) = condition {
-                //     let condition_value = self.handle_expression(ins, condition);
-                //     ins.push(tacky::Instruction::JumpIfZero {
-                //         condition: condition_value,
-                //         target: Self::break_label(label),
-                //     });
-                // }
-                // self.handle_statement(ins, body);
-                // ins.push(tacky::Instruction::Label(Self::continue_label(label)));
-                // if let Some(post) = post {
-                //     self.handle_expression(ins, post);
-                // }
-                // ins.push(tacky::Instruction::Jump {
-                //     target: start_label.clone(),
-                // });
-                // ins.push(tacky::Instruction::Label(Self::break_label(label)));
+                if let Some(initializer) = initializer {
+                    match initializer {
+                        ast::ForInitializer::VariableDeclaration(vd) => {
+                            self.handle_variable_declaration(ins, vd);
+                        }
+                        ast::ForInitializer::Expression(expression) => {
+                            self.handle_expression(ins, expression);
+                        }
+                    }
+                }
+                ins.push(tacky::Instruction::Label(start_label.clone()));
+                if let Some(condition) = condition {
+                    let condition_value = self.handle_expression(ins, condition);
+                    ins.push(tacky::Instruction::JumpIfZero {
+                        condition: condition_value,
+                        target: Self::break_label(label),
+                    });
+                }
+                self.handle_statement(ins, body);
+                ins.push(tacky::Instruction::Label(Self::continue_label(label)));
+                if let Some(post) = post {
+                    self.handle_expression(ins, post);
+                }
+                ins.push(tacky::Instruction::Jump {
+                    target: start_label.clone(),
+                });
+                ins.push(tacky::Instruction::Label(Self::break_label(label)));
             }
             ast::Statement::Null => {}
         }
@@ -506,7 +534,25 @@ impl TackyGen {
             ast::Expression::FunctionCall {
                 function,
                 arguments,
-            } => todo!(),
+            } => {
+                let dst = self.fresh_variable();
+
+                let mut args = Vec::new();
+
+                for arg in arguments {
+                    args.push(self.handle_expression(ins, arg));
+                }
+
+                ins.push(tacky::Instruction::FunctionCall {
+                    function: tacky::Function {
+                        identifier: function.identifier.clone(),
+                    },
+                    args,
+                    dst: dst.clone(),
+                });
+
+                tacky::Value::Variable(dst)
+            }
         }
     }
 

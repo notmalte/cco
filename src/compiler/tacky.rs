@@ -1,11 +1,12 @@
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program {
-    pub function_definition: Function,
+    pub function_definitions: Vec<FunctionDefinition>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Function {
-    pub name: String,
+pub struct FunctionDefinition {
+    pub function: Function,
+    pub parameters: Vec<Variable>,
     pub instructions: Vec<Instruction>,
 }
 
@@ -39,6 +40,11 @@ pub enum Instruction {
         target: Label,
     },
     Label(Label),
+    FunctionCall {
+        function: Function,
+        args: Vec<Value>,
+        dst: Variable,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -82,4 +88,9 @@ pub enum BinaryOperator {
     LessOrEqual,
     GreaterThan,
     GreaterOrEqual,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Function {
+    pub identifier: String,
 }

@@ -13,16 +13,20 @@ pub fn generate(program: &tacky::Program) -> asm::Program {
 }
 
 fn handle_program(program: &tacky::Program) -> asm::Program {
-    asm::Program {
-        function_definition: handle_function(&program.function_definition),
-    }
+    todo!()
+
+    // asm::Program {
+    //     function_definition: handle_function(&program.function_definition),
+    // }
 }
 
 fn handle_function(function: &tacky::Function) -> asm::Function {
-    asm::Function {
-        name: function.name.clone(),
-        instructions: handle_instructions(&function.instructions),
-    }
+    todo!()
+
+    // asm::Function {
+    //     name: function.name.clone(),
+    //     instructions: handle_instructions(&function.instructions),
+    // }
 }
 
 fn handle_instructions(instructions: &[tacky::Instruction]) -> Vec<asm::Instruction> {
@@ -178,6 +182,11 @@ fn handle_instructions(instructions: &[tacky::Instruction]) -> Vec<asm::Instruct
             tacky::Instruction::Label(label) => {
                 ins.push(asm::Instruction::Label(handle_label(label)));
             }
+            tacky::Instruction::FunctionCall {
+                function,
+                args,
+                dst,
+            } => todo!(),
         }
     }
 
@@ -387,30 +396,32 @@ mod tests {
 
     #[test]
     fn test_generate() {
-        let tacky_program = tacky::Program {
-            function_definition: tacky::Function {
-                name: "main".to_string(),
-                instructions: vec![tacky::Instruction::Return(tacky::Value::Constant(42))],
-            },
-        };
+        todo!()
 
-        let program = generate(&tacky_program);
+        // let tacky_program = tacky::Program {
+        //     function_definition: tacky::Function {
+        //         name: "main".to_string(),
+        //         instructions: vec![tacky::Instruction::Return(tacky::Value::Constant(42))],
+        //     },
+        // };
 
-        assert_eq!(
-            program,
-            asm::Program {
-                function_definition: asm::Function {
-                    name: "main".to_string(),
-                    instructions: vec![
-                        asm::Instruction::AllocateStack(0),
-                        asm::Instruction::Mov {
-                            src: asm::Operand::Imm(42),
-                            dst: asm::Operand::Reg(asm::Reg::AX),
-                        },
-                        asm::Instruction::Ret,
-                    ],
-                },
-            }
-        );
+        // let program = generate(&tacky_program);
+
+        // assert_eq!(
+        //     program,
+        //     asm::Program {
+        //         function_definition: asm::Function {
+        //             name: "main".to_string(),
+        //             instructions: vec![
+        //                 asm::Instruction::AllocateStack(0),
+        //                 asm::Instruction::Mov {
+        //                     src: asm::Operand::Imm(42),
+        //                     dst: asm::Operand::Reg(asm::Reg::AX),
+        //                 },
+        //                 asm::Instruction::Ret,
+        //             ],
+        //         },
+        //     }
+        // );
     }
 }
