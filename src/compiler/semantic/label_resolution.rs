@@ -1,41 +1,30 @@
 use crate::compiler::{
-    ast::{Block, BlockItem, Function, Label, Program, Statement},
+    ast::{Block, BlockItem, FunctionDeclaration, Label, Program, Statement},
     constants::SEMANTIC_LABEL_PREFIX,
 };
 use std::collections::HashMap;
 
+type LabelMap = HashMap<String, String>;
+
 pub struct LabelResolver {
     counter: usize,
-    map: HashMap<String, String>,
 }
 
 impl LabelResolver {
     fn new() -> Self {
-        Self {
-            map: HashMap::new(),
-            counter: 0,
-        }
+        Self { counter: 0 }
     }
 
     pub fn analyze(program: &Program) -> Result<Program, String> {
         let mut resolver = Self::new();
 
-        return Ok(program.clone());
+        let mut result = program.clone();
 
-        todo!()
+        for fd in result.function_declarations.iter_mut() {
+            *fd = resolver.handle_function_declaration(fd)?;
+        }
 
-        // let mut body = program.function_definition.body.clone();
-
-        // body = resolver.rewrite_label_in_block(&body)?;
-
-        // body = resolver.rewrite_goto_in_block(&body)?;
-
-        // Ok(Program {
-        //     function_definition: Function {
-        //         name: program.function_definition.name.clone(),
-        //         body,
-        //     },
-        // })
+        Ok(result)
     }
 
     fn fresh_label(&mut self, suffix: Option<&str>) -> Label {
@@ -48,30 +37,58 @@ impl LabelResolver {
         Label { identifier: name }
     }
 
-    fn rewrite_label_in_block(&mut self, block: &Block) -> Result<Block, String> {
+    fn handle_function_declaration(
+        &mut self,
+        fd: &FunctionDeclaration,
+    ) -> Result<FunctionDeclaration, String> {
+        if let Some(body) = &fd.body {
+            let mut map = LabelMap::new();
+
+            let mut body = body.clone();
+            body = self.rewrite_label_in_block(&body, &mut map)?;
+            body = self.rewrite_goto_in_block(&body, &mut map)?;
+
+            Ok(FunctionDeclaration {
+                function: fd.function.clone(),
+                parameters: fd.parameters.clone(),
+                body: Some(body),
+            })
+        } else {
+            Ok(fd.clone())
+        }
+    }
+
+    fn rewrite_label_in_block(
+        &mut self,
+        block: &Block,
+        map: &mut LabelMap,
+    ) -> Result<Block, String> {
         let mut result = block.clone();
         for item in result.items.iter_mut() {
             if let BlockItem::Statement(statement) = item {
-                *statement = self.rewrite_label_in_statement(statement)?;
+                *statement = self.rewrite_label_in_statement(statement, map)?;
             }
         }
         Ok(result)
     }
 
-    fn rewrite_label_in_statement(&mut self, statement: &Statement) -> Result<Statement, String> {
+    fn rewrite_label_in_statement(
+        &mut self,
+        statement: &Statement,
+        map: &mut LabelMap,
+    ) -> Result<Statement, String> {
         Ok(match statement {
             Statement::Labeled(label, statement) => {
-                if self.map.contains_key(&label.identifier) {
+                if map.contains_key(&label.identifier) {
                     return Err(format!("Label {} already declared", label.identifier));
                 }
 
                 let new_label = self.fresh_label(Some(&label.identifier));
-                self.map
-                    .insert(label.identifier.clone(), new_label.identifier.clone());
+                map.insert(label.identifier.clone(), new_label.identifier.clone());
 
                 Statement::Labeled(
                     new_label,
-                    Box::new(self.rewrite_label_in_statement(statement)?),
+                    Box::new(self.rewrite_label_in_statement(statement, map)?),
                 )
             }
             Statement::If {
@@ -80,21 +97,23 @@ impl LabelResolver {
                 else_branch,
             } => Statement::If {
                 condition: condition.clone(),
-                then_branch: Box::new(self.rewrite_label_in_statement(then_branch)?),
+                then_branch: Box::new(self.rewrite_label_in_statement(then_branch, map)?),
                 else_branch: if let Some(else_branch) = else_branch {
-                    Some(Box::new(self.rewrite_label_in_statement(else_branch)?))
+                    Some(Box::new(self.rewrite_label_in_statement(else_branch, map)?))
                 } else {
                     None
                 },
             },
-            Statement::Compound(block) => Statement::Compound(self.rewrite_label_in_block(block)?),
+            Statement::Compound(block) => {
+                Statement::Compound(self.rewrite_label_in_block(block, map)?)
+            }
             Statement::While {
                 condition,
                 body,
                 label,
             } => Statement::While {
                 condition: condition.clone(),
-                body: Box::new(self.rewrite_label_in_statement(body)?),
+                body: Box::new(self.rewrite_label_in_statement(body, map)?),
                 label: label.clone(),
             },
             Statement::DoWhile {
@@ -102,7 +121,7 @@ impl LabelResolver {
                 condition,
                 label,
             } => Statement::DoWhile {
-                body: Box::new(self.rewrite_label_in_statement(body)?),
+                body: Box::new(self.rewrite_label_in_statement(body, map)?),
                 condition: condition.clone(),
                 label: label.clone(),
             },
@@ -116,7 +135,7 @@ impl LabelResolver {
                 initializer: initializer.clone(),
                 condition: condition.clone(),
                 post: post.clone(),
-                body: Box::new(self.rewrite_label_in_statement(body)?),
+                body: Box::new(self.rewrite_label_in_statement(body, map)?),
                 label: label.clone(),
             },
 
@@ -129,20 +148,28 @@ impl LabelResolver {
         })
     }
 
-    fn rewrite_goto_in_block(&mut self, block: &Block) -> Result<Block, String> {
+    fn rewrite_goto_in_block(
+        &mut self,
+        block: &Block,
+        map: &mut LabelMap,
+    ) -> Result<Block, String> {
         let mut result = block.clone();
         for item in result.items.iter_mut() {
             if let BlockItem::Statement(statement) = item {
-                *statement = self.rewrite_goto_in_statement(statement)?;
+                *statement = self.rewrite_goto_in_statement(statement, map)?;
             }
         }
         Ok(result)
     }
 
-    fn rewrite_goto_in_statement(&mut self, statement: &Statement) -> Result<Statement, String> {
+    fn rewrite_goto_in_statement(
+        &mut self,
+        statement: &Statement,
+        map: &mut LabelMap,
+    ) -> Result<Statement, String> {
         Ok(match statement {
             Statement::Goto(label) => {
-                if let Some(new_name) = self.map.get(&label.identifier) {
+                if let Some(new_name) = map.get(&label.identifier) {
                     Statement::Goto(Label {
                         identifier: new_name.clone(),
                     })
@@ -156,25 +183,27 @@ impl LabelResolver {
                 else_branch,
             } => Statement::If {
                 condition: condition.clone(),
-                then_branch: Box::new(self.rewrite_goto_in_statement(then_branch)?),
+                then_branch: Box::new(self.rewrite_goto_in_statement(then_branch, map)?),
                 else_branch: if let Some(else_branch) = else_branch {
-                    Some(Box::new(self.rewrite_goto_in_statement(else_branch)?))
+                    Some(Box::new(self.rewrite_goto_in_statement(else_branch, map)?))
                 } else {
                     None
                 },
             },
             Statement::Labeled(label, statement) => Statement::Labeled(
                 label.clone(),
-                Box::new(self.rewrite_goto_in_statement(statement)?),
+                Box::new(self.rewrite_goto_in_statement(statement, map)?),
             ),
-            Statement::Compound(block) => Statement::Compound(self.rewrite_goto_in_block(block)?),
+            Statement::Compound(block) => {
+                Statement::Compound(self.rewrite_goto_in_block(block, map)?)
+            }
             Statement::While {
                 condition,
                 body,
                 label,
             } => Statement::While {
                 condition: condition.clone(),
-                body: Box::new(self.rewrite_goto_in_statement(body)?),
+                body: Box::new(self.rewrite_goto_in_statement(body, map)?),
                 label: label.clone(),
             },
             Statement::DoWhile {
@@ -182,7 +211,7 @@ impl LabelResolver {
                 condition,
                 label,
             } => Statement::DoWhile {
-                body: Box::new(self.rewrite_goto_in_statement(body)?),
+                body: Box::new(self.rewrite_goto_in_statement(body, map)?),
                 condition: condition.clone(),
                 label: label.clone(),
             },
@@ -196,7 +225,7 @@ impl LabelResolver {
                 initializer: initializer.clone(),
                 condition: condition.clone(),
                 post: post.clone(),
-                body: Box::new(self.rewrite_goto_in_statement(body)?),
+                body: Box::new(self.rewrite_goto_in_statement(body, map)?),
                 label: label.clone(),
             },
 
