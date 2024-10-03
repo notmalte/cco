@@ -1,11 +1,11 @@
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program {
-    pub function_definition: Function,
+    pub function_definitions: Vec<FunctionDefinition>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Function {
-    pub name: String,
+pub struct FunctionDefinition {
+    pub function: Function,
     pub instructions: Vec<Instruction>,
 }
 
@@ -45,6 +45,9 @@ pub enum Instruction {
     },
     Label(Label),
     AllocateStack(u64),
+    DeallocateStack(u64),
+    Push(Operand),
+    Call(Function),
     Ret,
 }
 
@@ -69,7 +72,7 @@ pub enum Operand {
     Imm(i64),
     Reg(Reg),
     Pseudo(String),
-    Stack(u64),
+    Stack(i64),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -79,11 +82,17 @@ pub struct Label {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ConditionCode {
+    /// Equal
     E,
+    /// Not Equal
     NE,
+    /// Greater
     G,
+    /// Greater or Equal
     GE,
+    /// Less
     L,
+    /// Less or Equal
     LE,
 }
 
@@ -92,6 +101,15 @@ pub enum Reg {
     AX,
     CX,
     DX,
+    DI,
+    SI,
+    R8,
+    R9,
     R10,
     R11,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Function {
+    pub identifier: String,
 }

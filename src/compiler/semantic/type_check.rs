@@ -32,10 +32,6 @@ impl SymbolTable {
         }
     }
 
-    fn has(&self, identifier: &str) -> bool {
-        self.entries.contains_key(identifier)
-    }
-
     fn get(&self, identifier: &str) -> Option<&SymbolTableEntry> {
         self.entries.get(identifier)
     }

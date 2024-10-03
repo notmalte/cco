@@ -26,10 +26,6 @@ impl IdentifierMap {
         }
     }
 
-    fn has(&self, identifier: &str) -> bool {
-        self.map.contains_key(identifier)
-    }
-
     fn get(&self, identifier: &str) -> Option<&IdentifierMapEntry> {
         self.map.get(identifier)
     }

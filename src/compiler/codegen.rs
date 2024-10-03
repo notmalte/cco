@@ -3,30 +3,57 @@ use std::collections::HashMap;
 use super::{asm, tacky};
 
 pub fn generate(program: &tacky::Program) -> asm::Program {
-    let mut p = handle_program(program);
-
-    let stack_size = replace_pseudo_registers(&mut p);
-
-    fix_up_instructions(&mut p, stack_size);
-
-    p
+    handle_program(program)
 }
 
 fn handle_program(program: &tacky::Program) -> asm::Program {
-    todo!()
-
-    // asm::Program {
-    //     function_definition: handle_function(&program.function_definition),
-    // }
+    asm::Program {
+        function_definitions: program
+            .function_definitions
+            .iter()
+            .map(handle_function_definition)
+            .collect(),
+    }
 }
 
-fn handle_function(function: &tacky::Function) -> asm::Function {
-    todo!()
+fn get_register_for_argument(i: usize) -> Option<asm::Reg> {
+    match i {
+        0 => Some(asm::Reg::DI),
+        1 => Some(asm::Reg::SI),
+        2 => Some(asm::Reg::DX),
+        3 => Some(asm::Reg::CX),
+        4 => Some(asm::Reg::R8),
+        5 => Some(asm::Reg::R9),
+        _ => None,
+    }
+}
 
-    // asm::Function {
-    //     name: function.name.clone(),
-    //     instructions: handle_instructions(&function.instructions),
-    // }
+fn handle_function_definition(fd: &tacky::FunctionDefinition) -> asm::FunctionDefinition {
+    let mut instructions = Vec::new();
+
+    for (i, parameter) in fd.parameters.iter().enumerate() {
+        let src = match get_register_for_argument(i) {
+            Some(reg) => asm::Operand::Reg(reg),
+            None => asm::Operand::Stack(16 + ((i as i64 - 6) * 8)),
+        };
+
+        instructions.push(asm::Instruction::Mov {
+            src,
+            dst: handle_variable(parameter),
+        });
+    }
+
+    instructions.extend(handle_instructions(&fd.instructions));
+
+    let stack_size = replace_pseudo_registers(&mut instructions);
+    fix_up_instructions(&mut instructions, stack_size);
+
+    asm::FunctionDefinition {
+        function: asm::Function {
+            identifier: fd.function.identifier.clone(),
+        },
+        instructions,
+    }
 }
 
 fn handle_instructions(instructions: &[tacky::Instruction]) -> Vec<asm::Instruction> {
@@ -186,7 +213,49 @@ fn handle_instructions(instructions: &[tacky::Instruction]) -> Vec<asm::Instruct
                 function,
                 args,
                 dst,
-            } => todo!(),
+            } => {
+                let (register_args, stack_args) = args.split_at(6.min(args.len()));
+
+                let stack_padding = if stack_args.len() % 2 == 0 { 0 } else { 8 };
+                if stack_padding != 0 {
+                    ins.push(asm::Instruction::AllocateStack(stack_padding));
+                }
+
+                for (i, arg) in register_args.iter().enumerate() {
+                    let reg = get_register_for_argument(i).unwrap();
+                    ins.push(asm::Instruction::Mov {
+                        src: handle_value(arg),
+                        dst: asm::Operand::Reg(reg),
+                    });
+                }
+
+                for arg in stack_args.iter().rev() {
+                    let val = handle_value(arg);
+                    if let asm::Operand::Imm(_) | asm::Operand::Reg(_) = val {
+                        ins.push(asm::Instruction::Push(val));
+                    } else {
+                        ins.push(asm::Instruction::Mov {
+                            src: val,
+                            dst: asm::Operand::Reg(asm::Reg::AX),
+                        });
+                        ins.push(asm::Instruction::Push(asm::Operand::Reg(asm::Reg::AX)));
+                    }
+                }
+
+                ins.push(asm::Instruction::Call(asm::Function {
+                    identifier: function.identifier.clone(),
+                }));
+
+                let bytes_to_deallocate = 8 * (stack_args.len() as u64) + stack_padding;
+                if bytes_to_deallocate != 0 {
+                    ins.push(asm::Instruction::DeallocateStack(bytes_to_deallocate));
+                }
+
+                ins.push(asm::Instruction::Mov {
+                    src: asm::Operand::Reg(asm::Reg::AX),
+                    dst: handle_variable(dst),
+                });
+            }
         }
     }
 
@@ -242,81 +311,77 @@ fn handle_label(label: &tacky::Label) -> asm::Label {
     }
 }
 
-fn replace_pseudo_registers(program: &mut asm::Program) -> u64 {
-    let mut map = HashMap::<String, u64>::new();
+fn replace_pseudo_registers(instructions: &mut Vec<asm::Instruction>) -> u64 {
+    let mut map = HashMap::new();
 
-    for ins in &mut program.function_definition.instructions {
+    for ins in instructions {
         match ins {
-            asm::Instruction::Mov { src, dst } => {
+            asm::Instruction::Mov { src, dst }
+            | asm::Instruction::Binary { src, dst, .. }
+            | asm::Instruction::Cmp { src, dst } => {
                 replace_pseudo_registers_in_operand(src, &mut map);
                 replace_pseudo_registers_in_operand(dst, &mut map);
             }
-            asm::Instruction::Unary { dst, .. } => {
-                replace_pseudo_registers_in_operand(dst, &mut map);
+
+            asm::Instruction::Unary { dst: op, .. }
+            | asm::Instruction::Idiv(op)
+            | asm::Instruction::Sal(op)
+            | asm::Instruction::Sar(op)
+            | asm::Instruction::SetCC { dst: op, .. }
+            | asm::Instruction::Push(op) => {
+                replace_pseudo_registers_in_operand(op, &mut map);
             }
-            asm::Instruction::Binary { src, dst, .. } => {
-                replace_pseudo_registers_in_operand(src, &mut map);
-                replace_pseudo_registers_in_operand(dst, &mut map);
-            }
-            asm::Instruction::Idiv(operand) => {
-                replace_pseudo_registers_in_operand(operand, &mut map);
-            }
-            asm::Instruction::Sal(operand) | asm::Instruction::Sar(operand) => {
-                replace_pseudo_registers_in_operand(operand, &mut map);
-            }
-            asm::Instruction::Cmp { src, dst } => {
-                replace_pseudo_registers_in_operand(src, &mut map);
-                replace_pseudo_registers_in_operand(dst, &mut map);
-            }
-            asm::Instruction::SetCC { cc: _, dst } => {
-                replace_pseudo_registers_in_operand(dst, &mut map);
-            }
+
             asm::Instruction::Ret
             | asm::Instruction::Cdq
             | asm::Instruction::Jmp { .. }
             | asm::Instruction::JmpCC { .. }
-            | asm::Instruction::Label(_) => {}
-            asm::Instruction::AllocateStack(_) => unreachable!(),
+            | asm::Instruction::Label(_)
+            | asm::Instruction::Call(_)
+            | asm::Instruction::AllocateStack(_)
+            | asm::Instruction::DeallocateStack(_) => {}
         }
     }
 
     4 * (map.len() as u64)
 }
 
-fn replace_pseudo_registers_in_operand(operand: &mut asm::Operand, map: &mut HashMap<String, u64>) {
+fn replace_pseudo_registers_in_operand(operand: &mut asm::Operand, map: &mut HashMap<String, i64>) {
     if let asm::Operand::Pseudo(name) = operand {
-        let candidate = 4 * ((map.len() as u64) + 1);
+        let candidate = 4 * ((map.len() as i64) + 1);
         let offset = *map.entry(name.clone()).or_insert(candidate);
         *operand = asm::Operand::Stack(offset);
     }
 }
 
-fn fix_up_instructions(program: &mut asm::Program, stack_size: u64) {
-    let mut ins = vec![];
+fn fix_up_instructions(instructions: &mut Vec<asm::Instruction>, stack_size: u64) {
+    let mut result = Vec::new();
 
-    ins.push(asm::Instruction::AllocateStack(stack_size));
+    result.push(asm::Instruction::AllocateStack(
+        stack_size.next_multiple_of(16),
+    ));
 
-    for i in &program.function_definition.instructions {
-        match i {
+    for ins in instructions.iter() {
+        match ins {
             asm::Instruction::Mov {
                 src: src @ asm::Operand::Stack(_),
                 dst: dst @ asm::Operand::Stack(_),
             } => {
-                ins.push(asm::Instruction::Mov {
+                result.push(asm::Instruction::Mov {
                     src: src.clone(),
                     dst: asm::Operand::Reg(asm::Reg::R10),
                 });
-                ins.push(asm::Instruction::Mov {
+                result.push(asm::Instruction::Mov {
                     src: asm::Operand::Reg(asm::Reg::R10),
                     dst: dst.clone(),
                 });
             }
             asm::Instruction::Idiv(value @ asm::Operand::Imm(_)) => {
-                ins.push(asm::Instruction::Mov {
+                result.push(asm::Instruction::Mov {
                     src: value.clone(),
                     dst: asm::Operand::Reg(asm::Reg::R10),
                 });
-                ins.push(asm::Instruction::Idiv(asm::Operand::Reg(asm::Reg::R10)));
+                result.push(asm::Instruction::Idiv(asm::Operand::Reg(asm::Reg::R10)));
             }
             asm::Instruction::Binary {
                 op:
@@ -328,11 +393,11 @@ fn fix_up_instructions(program: &mut asm::Program, stack_size: u64) {
                 src: src @ asm::Operand::Stack(_),
                 dst: dst @ asm::Operand::Stack(_),
             } => {
-                ins.push(asm::Instruction::Mov {
+                result.push(asm::Instruction::Mov {
                     src: src.clone(),
                     dst: asm::Operand::Reg(asm::Reg::R10),
                 });
-                ins.push(asm::Instruction::Binary {
+                result.push(asm::Instruction::Binary {
                     op: *op,
                     src: asm::Operand::Reg(asm::Reg::R10),
                     dst: dst.clone(),
@@ -343,16 +408,16 @@ fn fix_up_instructions(program: &mut asm::Program, stack_size: u64) {
                 src,
                 dst: dst @ asm::Operand::Stack(_),
             } => {
-                ins.push(asm::Instruction::Mov {
+                result.push(asm::Instruction::Mov {
                     src: dst.clone(),
                     dst: asm::Operand::Reg(asm::Reg::R11),
                 });
-                ins.push(asm::Instruction::Binary {
+                result.push(asm::Instruction::Binary {
                     op: asm::BinaryOperator::Mult,
                     src: src.clone(),
                     dst: asm::Operand::Reg(asm::Reg::R11),
                 });
-                ins.push(asm::Instruction::Mov {
+                result.push(asm::Instruction::Mov {
                     src: asm::Operand::Reg(asm::Reg::R11),
                     dst: dst.clone(),
                 });
@@ -361,11 +426,11 @@ fn fix_up_instructions(program: &mut asm::Program, stack_size: u64) {
                 src: src @ asm::Operand::Stack(_),
                 dst: dst @ asm::Operand::Stack(_),
             } => {
-                ins.push(asm::Instruction::Mov {
+                result.push(asm::Instruction::Mov {
                     src: src.clone(),
                     dst: asm::Operand::Reg(asm::Reg::R10),
                 });
-                ins.push(asm::Instruction::Cmp {
+                result.push(asm::Instruction::Cmp {
                     src: asm::Operand::Reg(asm::Reg::R10),
                     dst: dst.clone(),
                 });
@@ -374,20 +439,21 @@ fn fix_up_instructions(program: &mut asm::Program, stack_size: u64) {
                 src,
                 dst: dst @ asm::Operand::Imm(_),
             } => {
-                ins.push(asm::Instruction::Mov {
+                result.push(asm::Instruction::Mov {
                     src: dst.clone(),
                     dst: asm::Operand::Reg(asm::Reg::R11),
                 });
-                ins.push(asm::Instruction::Cmp {
+                result.push(asm::Instruction::Cmp {
                     src: src.clone(),
                     dst: asm::Operand::Reg(asm::Reg::R11),
                 })
             }
-            i => ins.push(i.clone()),
+
+            _ => result.push(ins.clone()),
         }
     }
 
-    program.function_definition.instructions = ins;
+    *instructions = result;
 }
 
 #[cfg(test)]
@@ -396,32 +462,35 @@ mod tests {
 
     #[test]
     fn test_generate() {
-        todo!()
+        let tacky_program = tacky::Program {
+            function_definitions: vec![tacky::FunctionDefinition {
+                function: tacky::Function {
+                    identifier: "main".to_string(),
+                },
+                parameters: vec![],
+                instructions: vec![tacky::Instruction::Return(tacky::Value::Constant(42))],
+            }],
+        };
 
-        // let tacky_program = tacky::Program {
-        //     function_definition: tacky::Function {
-        //         name: "main".to_string(),
-        //         instructions: vec![tacky::Instruction::Return(tacky::Value::Constant(42))],
-        //     },
-        // };
+        let program = generate(&tacky_program);
 
-        // let program = generate(&tacky_program);
-
-        // assert_eq!(
-        //     program,
-        //     asm::Program {
-        //         function_definition: asm::Function {
-        //             name: "main".to_string(),
-        //             instructions: vec![
-        //                 asm::Instruction::AllocateStack(0),
-        //                 asm::Instruction::Mov {
-        //                     src: asm::Operand::Imm(42),
-        //                     dst: asm::Operand::Reg(asm::Reg::AX),
-        //                 },
-        //                 asm::Instruction::Ret,
-        //             ],
-        //         },
-        //     }
-        // );
+        assert_eq!(
+            program,
+            asm::Program {
+                function_definitions: vec![asm::FunctionDefinition {
+                    function: asm::Function {
+                        identifier: "main".to_string()
+                    },
+                    instructions: vec![
+                        asm::Instruction::AllocateStack(0),
+                        asm::Instruction::Mov {
+                            src: asm::Operand::Imm(42),
+                            dst: asm::Operand::Reg(asm::Reg::AX),
+                        },
+                        asm::Instruction::Ret,
+                    ],
+                }],
+            }
+        );
     }
 }
