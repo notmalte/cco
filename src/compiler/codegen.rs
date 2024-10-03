@@ -348,7 +348,7 @@ fn replace_pseudo_registers(instructions: &mut Vec<asm::Instruction>) -> u64 {
 
 fn replace_pseudo_registers_in_operand(operand: &mut asm::Operand, map: &mut HashMap<String, i64>) {
     if let asm::Operand::Pseudo(name) = operand {
-        let candidate = 4 * ((map.len() as i64) + 1);
+        let candidate = -4 * ((map.len() as i64) + 1);
         let offset = *map.entry(name.clone()).or_insert(candidate);
         *operand = asm::Operand::Stack(offset);
     }

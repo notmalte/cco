@@ -59,7 +59,7 @@ pub fn compile(input: &std::path::PathBuf, output: &std::path::PathBuf, stage: C
         return;
     }
 
-    let emitted = emitter::emit(asm_result);
+    let emitted = emitter::emit(&asm_result);
 
     std::fs::write(output, emitted).unwrap();
 }
