@@ -25,6 +25,10 @@ pub enum Token {
     BreakKeyword,
     /// `continue`
     ContinueKeyword,
+    /// `static`
+    StaticKeyword,
+    /// `extern`
+    ExternKeyword,
 
     /// e.g. `42`
     Constant(i64),

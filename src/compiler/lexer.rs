@@ -23,6 +23,8 @@ fn find_first_token(s: &str) -> Option<(Token, &str)> {
             "for" => Token::ForKeyword,
             "break" => Token::BreakKeyword,
             "continue" => Token::ContinueKeyword,
+            "static" => Token::StaticKeyword,
+            "extern" => Token::ExternKeyword,
             _ => Token::Identifier(ms.to_string()),
         };
 
