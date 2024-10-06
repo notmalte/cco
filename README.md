@@ -2,6 +2,18 @@
 
 **cco** is a (very limited) x86_64 C compiler. See [/assets](./assets/) for C source files that it can compile. It relies on `gcc` for preprocessing and linking.
 
+
+## Example
+
+```
+$ cargo run -- ./assets/hello_world.c
+$ ./assets/hello_world
+Hello, World!
+```
+
+
+## Usage
+
 ```
 $ ./cco -h
 
@@ -17,6 +29,7 @@ Options:
       --tacky     Only run lexer + parser + semantic analysis + tacky generator
       --codegen   Only run lexer + parser + semantic analysis + tacky generator + codegen
   -S, --assembly  Emit assembly code, but do not link
+  -c, --object    Emit object code, but do not link
   -h, --help      Print help
   -V, --version   Print version
 ```
