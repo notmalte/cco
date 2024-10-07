@@ -5,7 +5,7 @@ mod compiler;
 mod driver;
 
 #[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
+#[command(about, long_about = None)]
 struct Args {
     #[arg(help = "Path to the C source file")]
     path: String,
@@ -14,7 +14,7 @@ struct Args {
         long,
         group = "stage",
         conflicts_with_all = &["assembly", "object"],
-        help = "Only run lexer"
+        help = "Stop after lexing"
     )]
     lex: bool,
 
@@ -22,7 +22,7 @@ struct Args {
         long,
         group = "stage",
         conflicts_with_all = &["assembly", "object"],
-        help = "Only run lexer + parser"
+        help = "Stop after parsing"
     )]
     parse: bool,
 
@@ -30,7 +30,7 @@ struct Args {
         long,
         group = "stage",
         conflicts_with_all = &["assembly", "object"],
-        help = "Only run lexer + parser + semantic analysis"
+        help = "Stop after semantic analysis"
     )]
     validate: bool,
 
@@ -38,7 +38,7 @@ struct Args {
         long,
         group = "stage",
         conflicts_with_all = &["assembly", "object"],
-        help = "Only run lexer + parser + semantic analysis + tacky generator"
+        help = "Stop after IR generation"
     )]
     tacky: bool,
 
@@ -46,7 +46,7 @@ struct Args {
         long,
         group = "stage",
         conflicts_with_all = &["assembly", "object"],
-        help = "Only run lexer + parser + semantic analysis + tacky generator + codegen"
+        help = "Stop after code generation"
     )]
     codegen: bool,
 
