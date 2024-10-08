@@ -17,13 +17,15 @@ impl LoopLabeler {
 
         let mut result = program.clone();
 
-        for fd in result.function_declarations.iter_mut() {
-            if let Some(body) = &fd.body {
-                fd.body = Some(labeler.handle_block(body, None)?);
-            }
-        }
+        todo!()
 
-        Ok(result)
+        // for fd in result.function_declarations.iter_mut() {
+        //     if let Some(body) = &fd.body {
+        //         fd.body = Some(labeler.handle_block(body, None)?);
+        //     }
+        // }
+
+        // Ok(result)
     }
 
     fn fresh_loop_label(&mut self, suffix: Option<&str>) -> LoopLabel {

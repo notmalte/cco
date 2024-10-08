@@ -47,17 +47,19 @@ impl TackyGen {
     }
 
     fn handle_program(&mut self, program: &ast::Program) -> tacky::Program {
-        let mut function_definitions = Vec::new();
+        todo!()
 
-        for declaration in &program.function_declarations {
-            if let Some(definition) = self.handle_function_declaration(declaration) {
-                function_definitions.push(definition);
-            }
-        }
+        // let mut function_definitions = Vec::new();
 
-        tacky::Program {
-            function_definitions,
-        }
+        // for declaration in &program.function_declarations {
+        //     if let Some(definition) = self.handle_function_declaration(declaration) {
+        //         function_definitions.push(definition);
+        //     }
+        // }
+
+        // tacky::Program {
+        //     function_definitions,
+        // }
     }
 
     fn handle_function_declaration(

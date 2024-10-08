@@ -1,12 +1,13 @@
 use std::collections::VecDeque;
 
-use super::{
+use crate::compiler::{
     ast::{
         AssignmentOperator, BinaryOperator, Block, BlockItem, Declaration, Expression,
-        ForInitializer, Function, FunctionDeclaration, Label, Program, Statement, UnaryOperator,
-        Variable, VariableDeclaration,
+        ForInitializer, Function, FunctionDeclaration, Label, Program, Statement, StorageClass,
+        UnaryOperator, Variable, VariableDeclaration,
     },
     token::Token,
+    types::Type,
 };
 
 pub fn parse(tokens: &[Token]) -> Result<Program, String> {
@@ -23,53 +24,110 @@ pub fn parse(tokens: &[Token]) -> Result<Program, String> {
 
 fn parse_program(tokens: &mut VecDeque<Token>) -> Result<Program, String> {
     Ok(Program {
-        function_declarations: parse_function_declarations(tokens)?,
+        declarations: parse_declarations(tokens)?,
     })
 }
 
-fn parse_function_declarations(
-    tokens: &mut VecDeque<Token>,
-) -> Result<Vec<FunctionDeclaration>, String> {
-    let mut function_declarations = vec![];
+fn parse_declarations(tokens: &mut VecDeque<Token>) -> Result<Vec<Declaration>, String> {
+    let mut declarations = Vec::new();
 
     while !tokens.is_empty() {
-        function_declarations.push(parse_function_declaration(tokens)?);
+        declarations.push(parse_declaration(tokens)?);
     }
 
-    Ok(function_declarations)
+    Ok(declarations)
 }
 
-fn parse_function_declaration(tokens: &mut VecDeque<Token>) -> Result<FunctionDeclaration, String> {
-    let Some(Token::IntKeyword) = tokens.pop_front() else {
-        return Err("Expected int keyword".to_string());
-    };
+fn parse_declaration(tokens: &mut VecDeque<Token>) -> Result<Declaration, String> {
+    let (t, storage_class) = parse_type_and_storage_class(tokens)?;
 
     let Some(Token::Identifier(identifier)) = tokens.pop_front() else {
         return Err("Expected identifier".to_string());
     };
 
-    let Some(Token::OpenParen) = tokens.pop_front() else {
-        return Err("Expected open parenthesis".to_string());
-    };
-
-    let parameters = parse_parameters(tokens)?;
-
-    let Some(Token::CloseParen) = tokens.pop_front() else {
-        return Err("Expected close parenthesis".to_string());
-    };
-
-    let body = if let Some(Token::Semicolon) = tokens.front() {
+    if let Some(Token::OpenParen) = tokens.front() {
         tokens.pop_front();
-        None
-    } else {
-        Some(parse_block(tokens)?)
-    };
+        let parameters = parse_parameters(tokens)?;
 
-    Ok(FunctionDeclaration {
-        function: Function { identifier },
-        parameters,
-        body,
-    })
+        let Some(Token::CloseParen) = tokens.pop_front() else {
+            return Err("Expected close parenthesis".to_string());
+        };
+
+        let body = if let Some(Token::Semicolon) = tokens.front() {
+            tokens.pop_front();
+            None
+        } else {
+            Some(parse_block(tokens)?)
+        };
+
+        Ok(Declaration::Function(FunctionDeclaration {
+            function: Function { identifier },
+            parameters,
+            body,
+            storage_class,
+        }))
+    } else {
+        let initializer = if let Some(Token::Equal) = tokens.front() {
+            tokens.pop_front();
+            let expression = parse_expression(tokens, 0)?;
+
+            Some(expression)
+        } else {
+            None
+        };
+
+        let Some(Token::Semicolon) = tokens.pop_front() else {
+            return Err("Expected semicolon".to_string());
+        };
+
+        Ok(Declaration::Variable(VariableDeclaration {
+            variable: Variable { identifier },
+            initializer,
+            storage_class,
+        }))
+    }
+}
+
+fn parse_type_and_storage_class(
+    tokens: &mut VecDeque<Token>,
+) -> Result<(Type, Option<StorageClass>), String> {
+    let mut types = Vec::new();
+    let mut storage_classes = Vec::new();
+
+    loop {
+        match tokens.front() {
+            Some(Token::IntKeyword) => {
+                tokens.pop_front();
+                types.push(Type::Int);
+            }
+            Some(Token::StaticKeyword) => {
+                tokens.pop_front();
+                storage_classes.push(StorageClass::Static);
+            }
+            Some(Token::ExternKeyword) => {
+                tokens.pop_front();
+                storage_classes.push(StorageClass::Extern);
+            }
+            _ => break,
+        }
+    }
+
+    if types.is_empty() || types.len() > 1 {
+        return Err("Expected exactly one type".to_string());
+    }
+
+    if storage_classes.len() > 1 {
+        return Err("Expected at most one storage class".to_string());
+    }
+
+    Ok((types[0], storage_classes.pop()))
+}
+
+fn matches_start_of_declaration(tokens: &VecDeque<Token>) -> bool {
+    matches!(
+        tokens.front(),
+        Some(Token::IntKeyword | Token::StaticKeyword | Token::ExternKeyword)
+    )
 }
 
 fn parse_parameters(tokens: &mut VecDeque<Token>) -> Result<Vec<Variable>, String> {
@@ -124,60 +182,10 @@ fn parse_block(tokens: &mut VecDeque<Token>) -> Result<Block, String> {
 }
 
 fn parse_block_item(tokens: &mut VecDeque<Token>) -> Result<BlockItem, String> {
-    if let Some(Token::IntKeyword) = tokens.front() {
+    if matches_start_of_declaration(tokens) {
         parse_declaration(tokens).map(BlockItem::Declaration)
     } else {
         parse_statement(tokens).map(BlockItem::Statement)
-    }
-}
-
-fn parse_declaration(tokens: &mut VecDeque<Token>) -> Result<Declaration, String> {
-    let Some(Token::IntKeyword) = tokens.pop_front() else {
-        return Err("Expected int keyword".to_string());
-    };
-
-    let Some(Token::Identifier(identifier)) = tokens.pop_front() else {
-        return Err("Expected identifier".to_string());
-    };
-
-    if let Some(Token::OpenParen) = tokens.front() {
-        tokens.pop_front();
-        let parameters = parse_parameters(tokens)?;
-
-        let Some(Token::CloseParen) = tokens.pop_front() else {
-            return Err("Expected close parenthesis".to_string());
-        };
-
-        let body = if let Some(Token::Semicolon) = tokens.front() {
-            tokens.pop_front();
-            None
-        } else {
-            Some(parse_block(tokens)?)
-        };
-
-        Ok(Declaration::Function(FunctionDeclaration {
-            function: Function { identifier },
-            parameters,
-            body,
-        }))
-    } else {
-        let initializer = if let Some(Token::Equal) = tokens.front() {
-            tokens.pop_front();
-            let expression = parse_expression(tokens, 0)?;
-
-            Some(expression)
-        } else {
-            None
-        };
-
-        let Some(Token::Semicolon) = tokens.pop_front() else {
-            return Err("Expected semicolon".to_string());
-        };
-
-        Ok(Declaration::Variable(VariableDeclaration {
-            variable: Variable { identifier },
-            initializer,
-        }))
     }
 }
 
@@ -405,7 +413,7 @@ fn parse_for_initializer(tokens: &mut VecDeque<Token>) -> Result<Option<ForIniti
         return Ok(None);
     }
 
-    if let Some(Token::IntKeyword) = tokens.front() {
+    if matches_start_of_declaration(tokens) {
         let declaration = parse_declaration(tokens)?;
 
         let Declaration::Variable(vd) = declaration else {
@@ -686,7 +694,7 @@ mod tests {
         ];
 
         let expected = Program {
-            function_declarations: vec![FunctionDeclaration {
+            declarations: vec![Declaration::Function(FunctionDeclaration {
                 function: Function {
                     identifier: "main".to_string(),
                 },
@@ -696,7 +704,8 @@ mod tests {
                         Expression::Constant(42),
                     ))],
                 }),
-            }],
+                storage_class: None,
+            })],
         };
 
         assert_eq!(parse(&tokens), Ok(expected));

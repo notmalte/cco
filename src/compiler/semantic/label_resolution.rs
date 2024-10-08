@@ -20,11 +20,13 @@ impl LabelResolver {
 
         let mut result = program.clone();
 
-        for fd in result.function_declarations.iter_mut() {
-            *fd = resolver.handle_function_declaration(fd)?;
-        }
+        todo!()
 
-        Ok(result)
+        // for fd in result.function_declarations.iter_mut() {
+        //     *fd = resolver.handle_function_declaration(fd)?;
+        // }
+
+        // Ok(result)
     }
 
     fn fresh_label(&mut self, suffix: Option<&str>) -> Label {
@@ -48,11 +50,13 @@ impl LabelResolver {
             body = self.rewrite_label_in_block(&body, &mut map)?;
             body = self.rewrite_goto_in_block(&body, &mut map)?;
 
-            Ok(FunctionDeclaration {
-                function: fd.function.clone(),
-                parameters: fd.parameters.clone(),
-                body: Some(body),
-            })
+            todo!()
+
+            // Ok(FunctionDeclaration {
+            //     function: fd.function.clone(),
+            //     parameters: fd.parameters.clone(),
+            //     body: Some(body),
+            // })
         } else {
             Ok(fd.clone())
         }

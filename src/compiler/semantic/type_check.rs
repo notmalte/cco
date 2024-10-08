@@ -65,15 +65,17 @@ impl TypeChecker {
     }
 
     fn handle_program(&mut self, program: &Program) -> Result<Program, String> {
-        let mut function_declarations = Vec::new();
+        todo!()
 
-        for fd in &program.function_declarations {
-            function_declarations.push(self.handle_function_declaration(fd)?);
-        }
+        // let mut function_declarations = Vec::new();
 
-        Ok(Program {
-            function_declarations,
-        })
+        // for fd in &program.function_declarations {
+        //     function_declarations.push(self.handle_function_declaration(fd)?);
+        // }
+
+        // Ok(Program {
+        //     function_declarations,
+        // })
     }
 
     fn handle_function_declaration(
@@ -133,11 +135,13 @@ impl TypeChecker {
             None
         };
 
-        Ok(FunctionDeclaration {
-            function: fd.function.clone(),
-            parameters: fd.parameters.clone(),
-            body,
-        })
+        todo!()
+
+        // Ok(FunctionDeclaration {
+        //     function: fd.function.clone(),
+        //     parameters: fd.parameters.clone(),
+        //     body,
+        // })
     }
 
     fn handle_block(&mut self, block: &Block) -> Result<Block, String> {
@@ -257,10 +261,12 @@ impl TypeChecker {
             None
         };
 
-        Ok(VariableDeclaration {
-            variable: vd.variable.clone(),
-            initializer,
-        })
+        todo!()
+
+        // Ok(VariableDeclaration {
+        //     variable: vd.variable.clone(),
+        //     initializer,
+        // })
     }
 
     fn handle_expression(&mut self, expr: &Expression) -> Result<Expression, String> {

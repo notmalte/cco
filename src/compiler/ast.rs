@@ -1,6 +1,33 @@
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program {
-    pub function_declarations: Vec<FunctionDeclaration>,
+    pub declarations: Vec<Declaration>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Declaration {
+    Variable(VariableDeclaration),
+    Function(FunctionDeclaration),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct VariableDeclaration {
+    pub variable: Variable,
+    pub initializer: Option<Expression>,
+    pub storage_class: Option<StorageClass>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct FunctionDeclaration {
+    pub function: Function,
+    pub parameters: Vec<Variable>,
+    pub body: Option<Block>,
+    pub storage_class: Option<StorageClass>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum StorageClass {
+    Static,
+    Extern,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -52,25 +79,6 @@ pub enum Statement {
 pub enum ForInitializer {
     VariableDeclaration(VariableDeclaration),
     Expression(Expression),
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Declaration {
-    Variable(VariableDeclaration),
-    Function(FunctionDeclaration),
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct VariableDeclaration {
-    pub variable: Variable,
-    pub initializer: Option<Expression>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct FunctionDeclaration {
-    pub function: Function,
-    pub parameters: Vec<Variable>,
-    pub body: Option<Block>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

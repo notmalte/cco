@@ -73,16 +73,18 @@ impl IdentifierResolver {
     }
 
     fn handle_program(&mut self, program: &Program) -> Result<Program, String> {
-        let mut map = IdentifierMap::new();
-        let mut function_declarations = vec![];
+        todo!()
 
-        for fd in &program.function_declarations {
-            function_declarations.push(self.handle_function_declaration(fd, &mut map)?);
-        }
+        // let mut map = IdentifierMap::new();
+        // let mut function_declarations = vec![];
 
-        Ok(Program {
-            function_declarations,
-        })
+        // for fd in &program.function_declarations {
+        //     function_declarations.push(self.handle_function_declaration(fd, &mut map)?);
+        // }
+
+        // Ok(Program {
+        //     function_declarations,
+        // })
     }
 
     fn handle_function_declaration(
@@ -121,11 +123,13 @@ impl IdentifierResolver {
             None
         };
 
-        Ok(FunctionDeclaration {
-            function: fd.function.clone(),
-            parameters,
-            body,
-        })
+        todo!()
+
+        // Ok(FunctionDeclaration {
+        //     function: fd.function.clone(),
+        //     parameters,
+        //     body,
+        // })
     }
 
     fn handle_parameter(
@@ -221,10 +225,12 @@ impl IdentifierResolver {
             None
         };
 
-        Ok(VariableDeclaration {
-            variable: fresh,
-            initializer,
-        })
+        todo!()
+
+        // Ok(VariableDeclaration {
+        //     variable: fresh,
+        //     initializer,
+        // })
     }
 
     fn handle_local_function_declaration(
