@@ -1,7 +1,7 @@
 use crate::compiler::{
     ast::{
         Block, BlockItem, Declaration, Expression, ForInitializer, Function, FunctionDeclaration,
-        Program, Statement, UnaryOperator, Variable, VariableDeclaration,
+        Program, Statement, StorageClass, UnaryOperator, Variable, VariableDeclaration,
     },
     constants::SEMANTIC_VAR_PREFIX,
 };
@@ -73,38 +73,66 @@ impl IdentifierResolver {
     }
 
     fn handle_program(&mut self, program: &Program) -> Result<Program, String> {
-        todo!()
+        let mut map = IdentifierMap::new();
+        let mut declarations = vec![];
 
-        // let mut map = IdentifierMap::new();
-        // let mut function_declarations = vec![];
+        for declaration in &program.declarations {
+            declarations.push(self.handle_top_level_declaration(declaration, &mut map)?);
+        }
 
-        // for fd in &program.function_declarations {
-        //     function_declarations.push(self.handle_function_declaration(fd, &mut map)?);
-        // }
-
-        // Ok(Program {
-        //     function_declarations,
-        // })
+        Ok(Program { declarations })
     }
 
-    fn handle_function_declaration(
+    fn handle_top_level_declaration(
         &mut self,
-        fd: &FunctionDeclaration,
+        declaration: &Declaration,
+        map: &mut IdentifierMap,
+    ) -> Result<Declaration, String> {
+        Ok(match declaration {
+            Declaration::Variable(vd) => {
+                Declaration::Variable(self.handle_top_level_variable_declaration(vd, map)?)
+            }
+            Declaration::Function(fd) => {
+                Declaration::Function(self.handle_top_level_function_declaration(fd, map)?)
+            }
+        })
+    }
+
+    fn handle_top_level_variable_declaration(
+        &mut self,
+        declaration: &VariableDeclaration,
+        map: &mut IdentifierMap,
+    ) -> Result<VariableDeclaration, String> {
+        map.insert(
+            declaration.variable.identifier.clone(),
+            IdentifierMapEntry {
+                new_name: declaration.variable.identifier.clone(),
+                from_current_scope: true,
+                has_linkage: true,
+            },
+        );
+
+        Ok(declaration.clone())
+    }
+
+    fn handle_top_level_function_declaration(
+        &mut self,
+        declaration: &FunctionDeclaration,
         map: &mut IdentifierMap,
     ) -> Result<FunctionDeclaration, String> {
-        if let Some(entry) = map.get(&fd.function.identifier) {
+        if let Some(entry) = map.get(&declaration.function.identifier) {
             if entry.from_current_scope && !entry.has_linkage {
                 return Err(format!(
                     "Duplicate declaration of identifier {}",
-                    fd.function.identifier
+                    declaration.function.identifier
                 ));
             }
         }
 
         map.insert(
-            fd.function.identifier.clone(),
+            declaration.function.identifier.clone(),
             IdentifierMapEntry {
-                new_name: fd.function.identifier.clone(),
+                new_name: declaration.function.identifier.clone(),
                 from_current_scope: true,
                 has_linkage: true,
             },
@@ -113,23 +141,22 @@ impl IdentifierResolver {
         let mut inner_map = map.clone_rescoped();
 
         let mut parameters = Vec::new();
-        for parameter in &fd.parameters {
+        for parameter in &declaration.parameters {
             parameters.push(self.handle_parameter(parameter, &mut inner_map)?);
         }
 
-        let body = if let Some(body) = fd.body.clone() {
+        let body = if let Some(body) = declaration.body.clone() {
             Some(self.handle_block(&body, inner_map)?)
         } else {
             None
         };
 
-        todo!()
-
-        // Ok(FunctionDeclaration {
-        //     function: fd.function.clone(),
-        //     parameters,
-        //     body,
-        // })
+        Ok(FunctionDeclaration {
+            function: declaration.function.clone(),
+            parameters,
+            body,
+            storage_class: declaration.storage_class,
+        })
     }
 
     fn handle_parameter(
@@ -169,7 +196,7 @@ impl IdentifierResolver {
             match item {
                 BlockItem::Declaration(declaration) => {
                     *item = BlockItem::Declaration(
-                        self.handle_local_declaration(declaration, &mut inner_map)?,
+                        self.handle_block_level_declaration(declaration, &mut inner_map)?,
                     );
                 }
                 BlockItem::Statement(statement) => {
@@ -180,69 +207,90 @@ impl IdentifierResolver {
         Ok(result)
     }
 
-    fn handle_local_declaration(
+    fn handle_block_level_declaration(
         &mut self,
         declaration: &Declaration,
         map: &mut IdentifierMap,
     ) -> Result<Declaration, String> {
         Ok(match declaration {
             Declaration::Variable(vd) => {
-                Declaration::Variable(self.handle_local_variable_declaration(vd, map)?)
+                Declaration::Variable(self.handle_block_level_variable_declaration(vd, map)?)
             }
             Declaration::Function(fd) => {
-                Declaration::Function(self.handle_local_function_declaration(fd, map)?)
+                Declaration::Function(self.handle_block_level_function_declaration(fd, map)?)
             }
         })
     }
 
-    fn handle_local_variable_declaration(
+    fn handle_block_level_variable_declaration(
         &mut self,
         declaration: &VariableDeclaration,
         map: &mut IdentifierMap,
     ) -> Result<VariableDeclaration, String> {
         if let Some(entry) = map.get(&declaration.variable.identifier) {
             if entry.from_current_scope {
-                return Err(format!(
-                    "Duplicate declaration of identifier {}",
-                    declaration.variable.identifier
-                ));
+                if !(entry.has_linkage && declaration.storage_class == Some(StorageClass::Extern)) {
+                    return Err(format!(
+                        "Conflicting block-level declarations of identifier {}",
+                        declaration.variable.identifier
+                    ));
+                }
             }
         }
 
-        let fresh = self.fresh_variable(Some(&declaration.variable.identifier));
-        map.insert(
-            declaration.variable.identifier.clone(),
-            IdentifierMapEntry {
-                new_name: fresh.identifier.clone(),
-                from_current_scope: true,
-                has_linkage: false,
-            },
-        );
+        if declaration.storage_class == Some(StorageClass::Extern) {
+            map.insert(
+                declaration.variable.identifier.clone(),
+                IdentifierMapEntry {
+                    new_name: declaration.variable.identifier.clone(),
+                    from_current_scope: true,
+                    has_linkage: true,
+                },
+            );
 
-        let initializer = if let Some(initializer) = &declaration.initializer {
-            Some(Self::handle_expression(initializer, map)?)
+            Ok(declaration.clone())
         } else {
-            None
-        };
+            let fresh = self.fresh_variable(Some(&declaration.variable.identifier));
+            map.insert(
+                declaration.variable.identifier.clone(),
+                IdentifierMapEntry {
+                    new_name: fresh.identifier.clone(),
+                    from_current_scope: true,
+                    has_linkage: false,
+                },
+            );
 
-        todo!()
+            let initializer = if let Some(initializer) = &declaration.initializer {
+                Some(Self::handle_expression(initializer, map)?)
+            } else {
+                None
+            };
 
-        // Ok(VariableDeclaration {
-        //     variable: fresh,
-        //     initializer,
-        // })
+            Ok(VariableDeclaration {
+                variable: fresh,
+                initializer,
+                storage_class: declaration.storage_class,
+            })
+        }
     }
 
-    fn handle_local_function_declaration(
+    fn handle_block_level_function_declaration(
         &mut self,
         declaration: &FunctionDeclaration,
         map: &mut IdentifierMap,
     ) -> Result<FunctionDeclaration, String> {
         if declaration.body.is_some() {
-            return Err("Local function declarations cannot have bodies".to_string());
+            return Err("Block level function declarations cannot have bodies".to_string());
         }
 
-        self.handle_function_declaration(declaration, map)
+        if declaration.storage_class == Some(StorageClass::Static) {
+            return Err(
+                "Block level function declarations cannot have static storage class specifiers"
+                    .to_string(),
+            );
+        }
+
+        self.handle_top_level_function_declaration(declaration, map)
     }
 
     fn handle_statement(
@@ -305,7 +353,10 @@ impl IdentifierResolver {
                 let initializer = match initializer {
                     Some(ForInitializer::VariableDeclaration(declaration)) => {
                         Some(ForInitializer::VariableDeclaration(
-                            self.handle_local_variable_declaration(declaration, &mut inner_map)?,
+                            self.handle_block_level_variable_declaration(
+                                declaration,
+                                &mut inner_map,
+                            )?,
                         ))
                     }
                     Some(ForInitializer::Expression(expr)) => Some(ForInitializer::Expression(
