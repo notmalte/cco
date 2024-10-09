@@ -1,5 +1,5 @@
 use crate::compiler::{
-    ast::{Block, BlockItem, LoopLabel, Program, Statement},
+    ast::{Block, BlockItem, Declaration, LoopLabel, Program, Statement},
     constants::SEMANTIC_LOOP_PREFIX,
 };
 
@@ -17,15 +17,15 @@ impl LoopLabeler {
 
         let mut result = program.clone();
 
-        todo!()
+        for declaration in result.declarations.iter_mut() {
+            if let Declaration::Function(fd) = declaration {
+                if let Some(body) = &fd.body {
+                    fd.body = Some(labeler.handle_block(body, None)?);
+                }
+            }
+        }
 
-        // for fd in result.function_declarations.iter_mut() {
-        //     if let Some(body) = &fd.body {
-        //         fd.body = Some(labeler.handle_block(body, None)?);
-        //     }
-        // }
-
-        // Ok(result)
+        Ok(result)
     }
 
     fn fresh_loop_label(&mut self, suffix: Option<&str>) -> LoopLabel {

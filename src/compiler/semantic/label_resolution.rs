@@ -1,5 +1,5 @@
 use crate::compiler::{
-    ast::{Block, BlockItem, FunctionDeclaration, Label, Program, Statement},
+    ast::{Block, BlockItem, Declaration, FunctionDeclaration, Label, Program, Statement},
     constants::SEMANTIC_LABEL_PREFIX,
 };
 use std::collections::HashMap;
@@ -20,13 +20,13 @@ impl LabelResolver {
 
         let mut result = program.clone();
 
-        todo!()
+        for declaration in result.declarations.iter_mut() {
+            if let Declaration::Function(fd) = declaration {
+                *fd = resolver.handle_function_declaration(fd)?;
+            }
+        }
 
-        // for fd in result.function_declarations.iter_mut() {
-        //     *fd = resolver.handle_function_declaration(fd)?;
-        // }
-
-        // Ok(result)
+        Ok(result)
     }
 
     fn fresh_label(&mut self, suffix: Option<&str>) -> Label {
@@ -50,13 +50,12 @@ impl LabelResolver {
             body = self.rewrite_label_in_block(&body, &mut map)?;
             body = self.rewrite_goto_in_block(&body, &mut map)?;
 
-            todo!()
-
-            // Ok(FunctionDeclaration {
-            //     function: fd.function.clone(),
-            //     parameters: fd.parameters.clone(),
-            //     body: Some(body),
-            // })
+            Ok(FunctionDeclaration {
+                function: fd.function.clone(),
+                parameters: fd.parameters.clone(),
+                body: Some(body),
+                storage_class: fd.storage_class.clone(),
+            })
         } else {
             Ok(fd.clone())
         }
