@@ -1,28 +1,40 @@
 use crate::compiler::{
     ast::{
         Block, BlockItem, Declaration, Expression, ForInitializer, FunctionDeclaration, Program,
-        Statement, VariableDeclaration,
+        Statement, StorageClass, VariableDeclaration,
     },
     types::Type,
 };
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
-enum SymbolTableEntry {
-    Variable { t: Type },
-    Function { t: Type, defined: bool },
+enum SymbolAttributes {
+    Function {
+        defined: bool,
+        global: bool,
+    },
+    Static {
+        initial: SymbolInitialValue,
+        global: bool,
+    },
+    Local,
 }
 
-impl SymbolTableEntry {
-    fn t(&self) -> &Type {
-        match self {
-            SymbolTableEntry::Variable { t } | SymbolTableEntry::Function { t, .. } => t,
-        }
-    }
+#[derive(Debug, Clone, Copy)]
+enum SymbolInitialValue {
+    Tentative,
+    Initial(i64),
+    None,
+}
+
+#[derive(Debug, Clone)]
+struct Symbol {
+    t: Type,
+    attrs: SymbolAttributes,
 }
 
 pub struct SymbolTable {
-    entries: HashMap<String, SymbolTableEntry>,
+    entries: HashMap<String, Symbol>,
 }
 
 impl SymbolTable {
@@ -32,15 +44,11 @@ impl SymbolTable {
         }
     }
 
-    fn get(&self, identifier: &str) -> Option<&SymbolTableEntry> {
+    fn get(&self, identifier: &str) -> Option<&Symbol> {
         self.entries.get(identifier)
     }
 
-    fn get_mut(&mut self, identifier: &str) -> Option<&mut SymbolTableEntry> {
-        self.entries.get_mut(identifier)
-    }
-
-    fn insert(&mut self, identifier: String, entry: SymbolTableEntry) -> Option<SymbolTableEntry> {
+    fn insert(&mut self, identifier: String, entry: Symbol) -> Option<Symbol> {
         self.entries.insert(identifier, entry)
     }
 }
@@ -65,68 +73,171 @@ impl TypeChecker {
     }
 
     fn handle_program(&mut self, program: &Program) -> Result<Program, String> {
-        todo!()
+        let mut declarations = Vec::new();
 
-        // let mut function_declarations = Vec::new();
+        for declaration in &program.declarations {
+            declarations.push(self.handle_top_level_declaration(declaration)?);
+        }
 
-        // for fd in &program.function_declarations {
-        //     function_declarations.push(self.handle_function_declaration(fd)?);
-        // }
-
-        // Ok(Program {
-        //     function_declarations,
-        // })
+        Ok(Program { declarations })
     }
 
-    fn handle_function_declaration(
+    fn handle_top_level_declaration(
         &mut self,
-        fd: &FunctionDeclaration,
-    ) -> Result<FunctionDeclaration, String> {
-        let t = Type::Function {
-            parameter_count: fd.parameters.len(),
+        declaration: &Declaration,
+    ) -> Result<Declaration, String> {
+        Ok(match declaration {
+            Declaration::Variable(vd) => {
+                Declaration::Variable(self.handle_top_level_variable_declaration(vd)?)
+            }
+            Declaration::Function(fd) => {
+                Declaration::Function(self.handle_function_declaration(fd)?)
+            }
+        })
+    }
+
+    fn handle_top_level_variable_declaration(
+        &mut self,
+        declaration: &VariableDeclaration,
+    ) -> Result<VariableDeclaration, String> {
+        let t = Type::Int;
+
+        let mut initial = match declaration.initializer {
+            Some(Expression::Constant(i)) => SymbolInitialValue::Initial(i),
+            None => {
+                if declaration.storage_class == Some(StorageClass::Extern) {
+                    SymbolInitialValue::None
+                } else {
+                    SymbolInitialValue::Tentative
+                }
+            }
+            _ => return Err("Non-constant initializer".to_string()),
         };
 
-        if let Some(entry) = self.symbols.get_mut(&fd.function.identifier) {
-            let SymbolTableEntry::Function {
-                t: entry_t,
-                defined: entry_defined,
-            } = entry
+        let mut global = declaration.storage_class != Some(StorageClass::Static);
+
+        if let Some(entry) = self.symbols.get(&declaration.variable.identifier) {
+            if entry.t != t {
+                return Err(format!(
+                    "Incompatible redeclaration of variable {}",
+                    declaration.variable.identifier
+                ));
+            }
+
+            let SymbolAttributes::Static {
+                initial: entry_initial,
+                global: entry_global,
+            } = entry.attrs
             else {
                 unreachable!()
             };
 
-            if *entry_t != t {
+            if declaration.storage_class == Some(StorageClass::Extern) {
+                global = entry_global;
+            } else if entry_global != global {
                 return Err(format!(
-                    "Incompatible redeclaration of function {}",
-                    fd.function.identifier
+                    "Conflicting variable linkage of {}",
+                    declaration.variable.identifier
                 ));
             }
 
-            if fd.body.is_some() {
-                if *entry_defined {
-                    return Err(format!(
-                        "Redefinition of function {}",
-                        fd.function.identifier
-                    ));
-                }
+            match entry_initial {
+                SymbolInitialValue::Initial(_) => {
+                    if let SymbolInitialValue::Initial(_) = initial {
+                        return Err(format!(
+                            "Conflicting file scope variable definition of {}",
+                            declaration.variable.identifier
+                        ));
+                    }
 
-                *entry_defined = true;
-            }
-        } else {
-            self.symbols.insert(
-                fd.function.identifier.clone(),
-                SymbolTableEntry::Function {
-                    t,
-                    defined: fd.body.is_some(),
-                },
-            );
+                    initial = entry_initial;
+                }
+                SymbolInitialValue::Tentative => {
+                    if !matches!(initial, SymbolInitialValue::Initial(_)) {
+                        initial = SymbolInitialValue::Tentative;
+                    }
+                }
+                _ => {}
+            };
         }
 
-        let body = if let Some(body) = &fd.body {
-            for parameter in &fd.parameters {
+        self.symbols.insert(
+            declaration.variable.identifier.clone(),
+            Symbol {
+                t: Type::Int,
+                attrs: SymbolAttributes::Static { initial, global },
+            },
+        );
+
+        Ok(declaration.clone())
+    }
+
+    fn handle_function_declaration(
+        &mut self,
+        declaration: &FunctionDeclaration,
+    ) -> Result<FunctionDeclaration, String> {
+        let t = Type::Function {
+            parameter_count: declaration.parameters.len(),
+        };
+
+        let has_body = declaration.body.is_some();
+        let mut already_defined = false;
+        let mut global = declaration.storage_class != Some(StorageClass::Static);
+
+        if let Some(entry) = self.symbols.get(&declaration.function.identifier) {
+            if entry.t != t {
+                return Err(format!(
+                    "Incompatible redeclaration of function {}",
+                    declaration.function.identifier
+                ));
+            }
+
+            let SymbolAttributes::Function {
+                defined: entry_defined,
+                global: entry_global,
+            } = entry.attrs
+            else {
+                unreachable!()
+            };
+
+            already_defined = entry_defined;
+
+            if already_defined && has_body {
+                return Err(format!(
+                    "Redefinition of function {}",
+                    declaration.function.identifier
+                ));
+            }
+
+            if entry_global && declaration.storage_class == Some(StorageClass::Static) {
+                return Err(format!(
+                    "Static function declaration of {} after non-static declaration",
+                    declaration.function.identifier
+                ));
+            }
+
+            global = entry_global;
+        }
+
+        self.symbols.insert(
+            declaration.function.identifier.clone(),
+            Symbol {
+                t,
+                attrs: SymbolAttributes::Function {
+                    defined: already_defined || has_body,
+                    global,
+                },
+            },
+        );
+
+        let body = if let Some(body) = &declaration.body {
+            for parameter in &declaration.parameters {
                 self.symbols.insert(
                     parameter.identifier.clone(),
-                    SymbolTableEntry::Variable { t: Type::Int },
+                    Symbol {
+                        t: Type::Int,
+                        attrs: SymbolAttributes::Local,
+                    },
                 );
             }
 
@@ -135,13 +246,12 @@ impl TypeChecker {
             None
         };
 
-        todo!()
-
-        // Ok(FunctionDeclaration {
-        //     function: fd.function.clone(),
-        //     parameters: fd.parameters.clone(),
-        //     body,
-        // })
+        Ok(FunctionDeclaration {
+            function: declaration.function.clone(),
+            parameters: declaration.parameters.clone(),
+            body,
+            storage_class: declaration.storage_class,
+        })
     }
 
     fn handle_block(&mut self, block: &Block) -> Result<Block, String> {
@@ -153,7 +263,8 @@ impl TypeChecker {
                     *item = BlockItem::Statement(self.handle_statement(statement)?);
                 }
                 BlockItem::Declaration(declaration) => {
-                    *item = BlockItem::Declaration(self.handle_declaration(declaration)?);
+                    *item =
+                        BlockItem::Declaration(self.handle_block_level_declaration(declaration)?);
                 }
             }
         }
@@ -208,9 +319,16 @@ impl TypeChecker {
                 label,
             } => {
                 let initializer = match initializer {
-                    Some(ForInitializer::VariableDeclaration(vd)) => Some(
-                        ForInitializer::VariableDeclaration(self.handle_variable_declaration(vd)?),
-                    ),
+                    Some(ForInitializer::VariableDeclaration(vd)) => {
+                        if vd.storage_class.is_some() {
+                            return Err("For loop variable declaration cannot have storage class"
+                                .to_string());
+                        }
+
+                        Some(ForInitializer::VariableDeclaration(
+                            self.handle_block_level_variable_declaration(vd)?,
+                        ))
+                    }
                     Some(ForInitializer::Expression(expr)) => {
                         Some(ForInitializer::Expression(self.handle_expression(expr)?))
                     }
@@ -235,10 +353,13 @@ impl TypeChecker {
         })
     }
 
-    fn handle_declaration(&mut self, declaration: &Declaration) -> Result<Declaration, String> {
+    fn handle_block_level_declaration(
+        &mut self,
+        declaration: &Declaration,
+    ) -> Result<Declaration, String> {
         Ok(match declaration {
             Declaration::Variable(vd) => {
-                Declaration::Variable(self.handle_variable_declaration(vd)?)
+                Declaration::Variable(self.handle_block_level_variable_declaration(vd)?)
             }
             Declaration::Function(function_declaration) => {
                 Declaration::Function(self.handle_function_declaration(function_declaration)?)
@@ -246,27 +367,88 @@ impl TypeChecker {
         })
     }
 
-    fn handle_variable_declaration(
+    fn handle_block_level_variable_declaration(
         &mut self,
-        vd: &VariableDeclaration,
+        declaration: &VariableDeclaration,
     ) -> Result<VariableDeclaration, String> {
-        self.symbols.insert(
-            vd.variable.identifier.clone(),
-            SymbolTableEntry::Variable { t: Type::Int },
-        );
+        let t = Type::Int;
 
-        let initializer = if let Some(expr) = &vd.initializer {
-            Some(self.handle_expression(expr)?)
-        } else {
-            None
-        };
+        Ok(match declaration.storage_class {
+            Some(StorageClass::Extern) => {
+                if declaration.initializer.is_some() {
+                    return Err(
+                        "Block-level extern variable cannot have an initializer".to_string()
+                    );
+                }
 
-        todo!()
+                if let Some(entry) = self.symbols.get(&declaration.variable.identifier) {
+                    if entry.t != t {
+                        return Err(format!(
+                            "Incompatible redeclaration of variable {}",
+                            declaration.variable.identifier
+                        ));
+                    }
+                } else {
+                    self.symbols.insert(
+                        declaration.variable.identifier.clone(),
+                        Symbol {
+                            t,
+                            attrs: SymbolAttributes::Static {
+                                initial: SymbolInitialValue::None,
+                                global: true,
+                            },
+                        },
+                    );
+                }
 
-        // Ok(VariableDeclaration {
-        //     variable: vd.variable.clone(),
-        //     initializer,
-        // })
+                declaration.clone()
+            }
+            Some(StorageClass::Static) => {
+                let initial = match declaration.initializer {
+                    Some(Expression::Constant(i)) => SymbolInitialValue::Initial(i),
+                    None => SymbolInitialValue::Initial(0),
+                    _ => {
+                        return Err(
+                            "Non-constant initializer on block-level static variable".to_string()
+                        )
+                    }
+                };
+
+                self.symbols.insert(
+                    declaration.variable.identifier.clone(),
+                    Symbol {
+                        t,
+                        attrs: SymbolAttributes::Static {
+                            initial,
+                            global: false,
+                        },
+                    },
+                );
+
+                declaration.clone()
+            }
+            None => {
+                self.symbols.insert(
+                    declaration.variable.identifier.clone(),
+                    Symbol {
+                        t,
+                        attrs: SymbolAttributes::Local,
+                    },
+                );
+
+                let initializer = if let Some(expr) = &declaration.initializer {
+                    Some(self.handle_expression(expr)?)
+                } else {
+                    None
+                };
+
+                VariableDeclaration {
+                    variable: declaration.variable.clone(),
+                    initializer,
+                    storage_class: declaration.storage_class,
+                }
+            }
+        })
     }
 
     fn handle_expression(&mut self, expr: &Expression) -> Result<Expression, String> {
@@ -277,11 +459,11 @@ impl TypeChecker {
             } => {
                 let entry = self.symbols.get(&function.identifier).unwrap();
 
-                let Type::Function { parameter_count } = entry.t() else {
+                let Type::Function { parameter_count } = entry.t else {
                     return Err(format!("{} is not a function", function.identifier));
                 };
 
-                if *parameter_count != arguments.len() {
+                if parameter_count != arguments.len() {
                     return Err(format!(
                         "Function {} expects {} arguments, got {}",
                         function.identifier,
@@ -299,7 +481,7 @@ impl TypeChecker {
             Expression::Variable(variable) => {
                 let entry = self.symbols.get(&variable.identifier).unwrap();
 
-                let Type::Int = entry.t() else {
+                let Type::Int = entry.t else {
                     return Err(format!("{} is not a variable", variable.identifier));
                 };
 
