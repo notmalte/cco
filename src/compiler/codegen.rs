@@ -7,13 +7,15 @@ pub fn generate(program: &tacky::Program) -> asm::Program {
 }
 
 fn handle_program(program: &tacky::Program) -> asm::Program {
-    asm::Program {
-        function_definitions: program
-            .function_definitions
-            .iter()
-            .map(handle_function_definition)
-            .collect(),
-    }
+    todo!()
+
+    // asm::Program {
+    //     function_definitions: program
+    //         .function_definitions
+    //         .iter()
+    //         .map(handle_function_definition)
+    //         .collect(),
+    // }
 }
 
 fn get_register_for_argument(i: usize) -> Option<asm::Reg> {

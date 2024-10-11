@@ -1,8 +1,13 @@
-use super::{
+use crate::compiler::{
     ast,
     constants::{TAC_LABEL_PREFIX, TAC_VAR_PREFIX},
+    symbols::{SymbolAttributes, SymbolInitialValue, SymbolTable},
     tacky,
 };
+
+pub fn generate(program: &ast::Program, symbols: &SymbolTable) -> tacky::Program {
+    (TackyGen::new()).handle_program(program, symbols)
+}
 
 pub struct TackyGen {
     variable_counter: usize,
@@ -46,25 +51,50 @@ impl TackyGen {
         }
     }
 
-    fn handle_program(&mut self, program: &ast::Program) -> tacky::Program {
-        todo!()
+    fn handle_program(&mut self, program: &ast::Program, symbols: &SymbolTable) -> tacky::Program {
+        let mut items = Vec::new();
 
-        // let mut function_definitions = Vec::new();
+        for declaration in &program.declarations {
+            if let ast::Declaration::Function(fd) = declaration {
+                if let Some(definition) = self.handle_top_level_function_declaration(fd, symbols) {
+                    items.push(tacky::TopLevelItem::FunctionDefinition(definition));
+                }
+            }
+        }
 
-        // for declaration in &program.function_declarations {
-        //     if let Some(definition) = self.handle_function_declaration(declaration) {
-        //         function_definitions.push(definition);
-        //     }
-        // }
+        for (identifier, symbol) in symbols.iter() {
+            if let SymbolAttributes::Static { initial, global } = symbol.attrs {
+                match initial {
+                    SymbolInitialValue::Tentative => {
+                        items.push(tacky::TopLevelItem::StaticVariable(tacky::StaticVariable {
+                            variable: tacky::Variable {
+                                identifier: identifier.clone(),
+                            },
+                            global,
+                            initial: 0,
+                        }));
+                    }
+                    SymbolInitialValue::Initial(initial) => {
+                        items.push(tacky::TopLevelItem::StaticVariable(tacky::StaticVariable {
+                            variable: tacky::Variable {
+                                identifier: identifier.clone(),
+                            },
+                            global,
+                            initial,
+                        }));
+                    }
+                    SymbolInitialValue::None => {}
+                }
+            }
+        }
 
-        // tacky::Program {
-        //     function_definitions,
-        // }
+        tacky::Program { items }
     }
 
-    fn handle_function_declaration(
+    fn handle_top_level_function_declaration(
         &mut self,
         fd: &ast::FunctionDeclaration,
+        symbols: &SymbolTable,
     ) -> Option<tacky::FunctionDefinition> {
         let Some(body) = &fd.body else {
             return None;
@@ -74,10 +104,16 @@ impl TackyGen {
 
         instructions.push(tacky::Instruction::Return(tacky::Value::Constant(0)));
 
+        let symbol = symbols.get(&fd.function.identifier).unwrap();
+        let SymbolAttributes::Function { global, .. } = symbol.attrs else {
+            unreachable!()
+        };
+
         Some(tacky::FunctionDefinition {
             function: tacky::Function {
                 identifier: fd.function.identifier.clone(),
             },
+            global,
             parameters: fd
                 .parameters
                 .iter()
@@ -96,7 +132,7 @@ impl TackyGen {
         for item in &block.items {
             match item {
                 ast::BlockItem::Declaration(declaration) => {
-                    self.handle_local_declaration(&mut ins, declaration);
+                    self.handle_block_level_declaration(&mut ins, declaration);
                 }
                 ast::BlockItem::Statement(statement) => {
                     self.handle_statement(&mut ins, statement);
@@ -107,22 +143,26 @@ impl TackyGen {
         ins
     }
 
-    fn handle_local_declaration(
+    fn handle_block_level_declaration(
         &mut self,
         ins: &mut Vec<tacky::Instruction>,
         declaration: &ast::Declaration,
     ) {
         match declaration {
-            ast::Declaration::Variable(vd) => self.handle_variable_declaration(ins, vd),
+            ast::Declaration::Variable(vd) => self.handle_block_level_variable_declaration(ins, vd),
             ast::Declaration::Function(_) => {}
         }
     }
 
-    fn handle_variable_declaration(
+    fn handle_block_level_variable_declaration(
         &mut self,
         ins: &mut Vec<tacky::Instruction>,
         vd: &ast::VariableDeclaration,
     ) {
+        if vd.storage_class.is_some() {
+            return;
+        }
+
         if let Some(initializer) = &vd.initializer {
             let value = self.handle_expression(ins, initializer);
 
@@ -267,7 +307,7 @@ impl TackyGen {
                 if let Some(initializer) = initializer {
                     match initializer {
                         ast::ForInitializer::VariableDeclaration(vd) => {
-                            self.handle_variable_declaration(ins, vd);
+                            self.handle_block_level_variable_declaration(ins, vd);
                         }
                         ast::ForInitializer::Expression(expression) => {
                             self.handle_expression(ins, expression);
@@ -607,8 +647,4 @@ impl TackyGen {
             ast::AssignmentOperator::ShiftRightAssign => tacky::BinaryOperator::ShiftRight,
         }
     }
-}
-
-pub fn generate(program: &ast::Program) -> tacky::Program {
-    (TackyGen::new()).handle_program(program)
 }

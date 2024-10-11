@@ -1,4 +1,4 @@
-use crate::compiler::ast::Program;
+use crate::compiler::{ast::Program, symbols::SymbolTable};
 
 mod identifier_resolution;
 mod label_resolution;
@@ -10,9 +10,9 @@ use label_resolution::LabelResolver;
 use loop_labeling::LoopLabeler;
 use type_check::TypeChecker;
 
-pub fn analyze(program: &Program) -> Result<Program, String> {
+pub fn analyze(program: &Program) -> Result<(Program, SymbolTable), String> {
     IdentifierResolver::analyze(program)
         .and_then(|program| LabelResolver::analyze(&program))
         .and_then(|program| LoopLabeler::analyze(&program))
-        .and_then(|program| TypeChecker::analyze(&program).map(|(program, _)| program))
+        .and_then(|program| TypeChecker::analyze(&program))
 }

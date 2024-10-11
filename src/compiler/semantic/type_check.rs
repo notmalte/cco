@@ -3,55 +3,9 @@ use crate::compiler::{
         Block, BlockItem, Declaration, Expression, ForInitializer, FunctionDeclaration, Program,
         Statement, StorageClass, VariableDeclaration,
     },
+    symbols::{Symbol, SymbolAttributes, SymbolInitialValue, SymbolTable},
     types::Type,
 };
-use std::collections::HashMap;
-
-#[derive(Debug, Clone)]
-enum SymbolAttributes {
-    Function {
-        defined: bool,
-        global: bool,
-    },
-    Static {
-        initial: SymbolInitialValue,
-        global: bool,
-    },
-    Local,
-}
-
-#[derive(Debug, Clone, Copy)]
-enum SymbolInitialValue {
-    Tentative,
-    Initial(i64),
-    None,
-}
-
-#[derive(Debug, Clone)]
-struct Symbol {
-    t: Type,
-    attrs: SymbolAttributes,
-}
-
-pub struct SymbolTable {
-    entries: HashMap<String, Symbol>,
-}
-
-impl SymbolTable {
-    fn new() -> Self {
-        Self {
-            entries: HashMap::new(),
-        }
-    }
-
-    fn get(&self, identifier: &str) -> Option<&Symbol> {
-        self.entries.get(identifier)
-    }
-
-    fn insert(&mut self, identifier: String, entry: Symbol) -> Option<Symbol> {
-        self.entries.insert(identifier, entry)
-    }
-}
 
 pub struct TypeChecker {
     symbols: SymbolTable,

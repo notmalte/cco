@@ -6,6 +6,7 @@ mod emitter;
 mod lexer;
 mod parser;
 mod semantic;
+mod symbols;
 mod tacky;
 mod tackygen;
 mod token;
@@ -40,14 +41,14 @@ pub fn compile(input: &std::path::PathBuf, output: &std::path::PathBuf, stage: C
         return;
     }
 
-    let validated_ast_result =
+    let (validated_ast_result, symbols) =
         semantic::analyze(&ast_result).expect("Error during semantic analysis");
     if stage == CompilerStage::Validate {
         dbg!(&validated_ast_result);
         return;
     }
 
-    let tacky_result = tackygen::generate(&validated_ast_result);
+    let tacky_result = tackygen::generate(&validated_ast_result, &symbols);
     if stage == CompilerStage::Tacky {
         dbg!(&tacky_result);
         return;

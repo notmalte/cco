@@ -39,7 +39,7 @@ fn parse_declarations(tokens: &mut VecDeque<Token>) -> Result<Vec<Declaration>, 
 }
 
 fn parse_declaration(tokens: &mut VecDeque<Token>) -> Result<Declaration, String> {
-    let (t, storage_class) = parse_type_and_storage_class(tokens)?;
+    let (_, storage_class) = parse_type_and_storage_class(tokens)?;
 
     let Some(Token::Identifier(identifier)) = tokens.pop_front() else {
         return Err("Expected identifier".to_string());
