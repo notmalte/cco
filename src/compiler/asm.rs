@@ -1,12 +1,26 @@
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program {
-    pub function_definitions: Vec<FunctionDefinition>,
+    pub items: Vec<TopLevelItem>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TopLevelItem {
+    FunctionDefinition(FunctionDefinition),
+    StaticVariable(StaticVariable),
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionDefinition {
     pub function: Function,
+    pub global: bool,
     pub instructions: Vec<Instruction>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StaticVariable {
+    pub variable: Variable,
+    pub global: bool,
+    pub initial: i64,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -73,6 +87,7 @@ pub enum Operand {
     Reg(Reg),
     Pseudo(String),
     Stack(i64),
+    Data(String),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -111,5 +126,10 @@ pub enum Reg {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Function {
+    pub identifier: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Variable {
     pub identifier: String,
 }

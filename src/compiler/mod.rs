@@ -54,7 +54,7 @@ pub fn compile(input: &std::path::PathBuf, output: &std::path::PathBuf, stage: C
         return;
     }
 
-    let asm_result = codegen::generate(&tacky_result);
+    let asm_result = codegen::generate(&tacky_result, &symbols);
     if stage == CompilerStage::Codegen {
         dbg!(&asm_result);
         return;

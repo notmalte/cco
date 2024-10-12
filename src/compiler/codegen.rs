@@ -1,21 +1,34 @@
 use std::collections::HashMap;
 
-use super::{asm, tacky};
+use crate::compiler::{asm, symbols::SymbolAttributes, tacky};
 
-pub fn generate(program: &tacky::Program) -> asm::Program {
-    handle_program(program)
+use super::symbols::{Symbol, SymbolTable};
+
+pub fn generate(program: &tacky::Program, symbols: &SymbolTable) -> asm::Program {
+    handle_program(program, symbols)
 }
 
-fn handle_program(program: &tacky::Program) -> asm::Program {
-    todo!()
+fn handle_program(program: &tacky::Program, symbols: &SymbolTable) -> asm::Program {
+    let mut items = Vec::new();
 
-    // asm::Program {
-    //     function_definitions: program
-    //         .function_definitions
-    //         .iter()
-    //         .map(handle_function_definition)
-    //         .collect(),
-    // }
+    for item in &program.items {
+        items.push(match item {
+            tacky::TopLevelItem::FunctionDefinition(fd) => {
+                asm::TopLevelItem::FunctionDefinition(handle_function_definition(fd, symbols))
+            }
+            tacky::TopLevelItem::StaticVariable(sv) => {
+                asm::TopLevelItem::StaticVariable(asm::StaticVariable {
+                    variable: asm::Variable {
+                        identifier: sv.variable.identifier.clone(),
+                    },
+                    global: sv.global,
+                    initial: sv.initial,
+                })
+            }
+        });
+    }
+
+    asm::Program { items }
 }
 
 fn get_register_for_argument(i: usize) -> Option<asm::Reg> {
@@ -30,7 +43,10 @@ fn get_register_for_argument(i: usize) -> Option<asm::Reg> {
     }
 }
 
-fn handle_function_definition(fd: &tacky::FunctionDefinition) -> asm::FunctionDefinition {
+fn handle_function_definition(
+    fd: &tacky::FunctionDefinition,
+    symbols: &SymbolTable,
+) -> asm::FunctionDefinition {
     let mut instructions = Vec::new();
 
     for (i, parameter) in fd.parameters.iter().enumerate() {
@@ -47,13 +63,14 @@ fn handle_function_definition(fd: &tacky::FunctionDefinition) -> asm::FunctionDe
 
     instructions.extend(handle_instructions(&fd.instructions));
 
-    let stack_size = replace_pseudo_registers(&mut instructions);
+    let stack_size = replace_pseudo_registers(&mut instructions, symbols);
     fix_up_instructions(&mut instructions, stack_size);
 
     asm::FunctionDefinition {
         function: asm::Function {
             identifier: fd.function.identifier.clone(),
         },
+        global: fd.global,
         instructions,
     }
 }
@@ -313,7 +330,10 @@ fn handle_label(label: &tacky::Label) -> asm::Label {
     }
 }
 
-fn replace_pseudo_registers(instructions: &mut Vec<asm::Instruction>) -> u64 {
+fn replace_pseudo_registers(
+    instructions: &mut Vec<asm::Instruction>,
+    symbols: &SymbolTable,
+) -> u64 {
     let mut map = HashMap::new();
 
     for ins in instructions {
@@ -321,8 +341,8 @@ fn replace_pseudo_registers(instructions: &mut Vec<asm::Instruction>) -> u64 {
             asm::Instruction::Mov { src, dst }
             | asm::Instruction::Binary { src, dst, .. }
             | asm::Instruction::Cmp { src, dst } => {
-                replace_pseudo_registers_in_operand(src, &mut map);
-                replace_pseudo_registers_in_operand(dst, &mut map);
+                replace_pseudo_registers_in_operand(src, &mut map, symbols);
+                replace_pseudo_registers_in_operand(dst, &mut map, symbols);
             }
 
             asm::Instruction::Unary { dst: op, .. }
@@ -331,7 +351,7 @@ fn replace_pseudo_registers(instructions: &mut Vec<asm::Instruction>) -> u64 {
             | asm::Instruction::Sar(op)
             | asm::Instruction::SetCC { dst: op, .. }
             | asm::Instruction::Push(op) => {
-                replace_pseudo_registers_in_operand(op, &mut map);
+                replace_pseudo_registers_in_operand(op, &mut map, symbols);
             }
 
             asm::Instruction::Ret
@@ -348,11 +368,26 @@ fn replace_pseudo_registers(instructions: &mut Vec<asm::Instruction>) -> u64 {
     4 * (map.len() as u64)
 }
 
-fn replace_pseudo_registers_in_operand(operand: &mut asm::Operand, map: &mut HashMap<String, i64>) {
+fn replace_pseudo_registers_in_operand(
+    operand: &mut asm::Operand,
+    map: &mut HashMap<String, i64>,
+    symbols: &SymbolTable,
+) {
     if let asm::Operand::Pseudo(name) = operand {
-        let candidate = -4 * ((map.len() as i64) + 1);
-        let offset = *map.entry(name.clone()).or_insert(candidate);
-        *operand = asm::Operand::Stack(offset);
+        *operand = match map.get(name) {
+            Some(offset) => asm::Operand::Stack(*offset),
+            None => match symbols.get(name) {
+                Some(Symbol {
+                    attrs: SymbolAttributes::Static { .. },
+                    ..
+                }) => asm::Operand::Data(name.clone()),
+                _ => {
+                    let offset = -4 * ((map.len() as i64) + 1);
+                    map.insert(name.clone(), offset);
+                    asm::Operand::Stack(offset)
+                }
+            },
+        }
     }
 }
 
@@ -366,8 +401,8 @@ fn fix_up_instructions(instructions: &mut Vec<asm::Instruction>, stack_size: u64
     for ins in instructions.iter() {
         match ins {
             asm::Instruction::Mov {
-                src: src @ asm::Operand::Stack(_),
-                dst: dst @ asm::Operand::Stack(_),
+                src: src @ (asm::Operand::Stack(_) | asm::Operand::Data(_)),
+                dst: dst @ (asm::Operand::Stack(_) | asm::Operand::Data(_)),
             } => {
                 result.push(asm::Instruction::Mov {
                     src: src.clone(),
@@ -392,8 +427,8 @@ fn fix_up_instructions(instructions: &mut Vec<asm::Instruction>, stack_size: u64
                     | asm::BinaryOperator::And
                     | asm::BinaryOperator::Or
                     | asm::BinaryOperator::Xor),
-                src: src @ asm::Operand::Stack(_),
-                dst: dst @ asm::Operand::Stack(_),
+                src: src @ (asm::Operand::Stack(_) | asm::Operand::Data(_)),
+                dst: dst @ (asm::Operand::Stack(_) | asm::Operand::Data(_)),
             } => {
                 result.push(asm::Instruction::Mov {
                     src: src.clone(),
@@ -425,8 +460,8 @@ fn fix_up_instructions(instructions: &mut Vec<asm::Instruction>, stack_size: u64
                 });
             }
             asm::Instruction::Cmp {
-                src: src @ asm::Operand::Stack(_),
-                dst: dst @ asm::Operand::Stack(_),
+                src: src @ (asm::Operand::Stack(_) | asm::Operand::Data(_)),
+                dst: dst @ (asm::Operand::Stack(_) | asm::Operand::Data(_)),
             } => {
                 result.push(asm::Instruction::Mov {
                     src: src.clone(),
@@ -465,33 +500,39 @@ mod tests {
     #[test]
     fn test_generate() {
         let tacky_program = tacky::Program {
-            function_definitions: vec![tacky::FunctionDefinition {
-                function: tacky::Function {
-                    identifier: "main".to_string(),
+            items: vec![tacky::TopLevelItem::FunctionDefinition(
+                tacky::FunctionDefinition {
+                    function: tacky::Function {
+                        identifier: "main".to_string(),
+                    },
+                    global: true,
+                    parameters: vec![],
+                    instructions: vec![tacky::Instruction::Return(tacky::Value::Constant(42))],
                 },
-                parameters: vec![],
-                instructions: vec![tacky::Instruction::Return(tacky::Value::Constant(42))],
-            }],
+            )],
         };
 
-        let program = generate(&tacky_program);
+        let program = generate(&tacky_program, &SymbolTable::new());
 
         assert_eq!(
             program,
             asm::Program {
-                function_definitions: vec![asm::FunctionDefinition {
-                    function: asm::Function {
-                        identifier: "main".to_string()
-                    },
-                    instructions: vec![
-                        asm::Instruction::AllocateStack(0),
-                        asm::Instruction::Mov {
-                            src: asm::Operand::Imm(42),
-                            dst: asm::Operand::Reg(asm::Reg::AX),
+                items: vec![asm::TopLevelItem::FunctionDefinition(
+                    asm::FunctionDefinition {
+                        function: asm::Function {
+                            identifier: "main".to_string()
                         },
-                        asm::Instruction::Ret,
-                    ],
-                }],
+                        global: true,
+                        instructions: vec![
+                            asm::Instruction::AllocateStack(0),
+                            asm::Instruction::Mov {
+                                src: asm::Operand::Imm(42),
+                                dst: asm::Operand::Reg(asm::Reg::AX),
+                            },
+                            asm::Instruction::Ret,
+                        ],
+                    }
+                )],
             }
         );
     }

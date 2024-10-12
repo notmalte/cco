@@ -228,13 +228,13 @@ impl IdentifierResolver {
         map: &mut IdentifierMap,
     ) -> Result<VariableDeclaration, String> {
         if let Some(entry) = map.get(&declaration.variable.identifier) {
-            if entry.from_current_scope {
-                if !(entry.has_linkage && declaration.storage_class == Some(StorageClass::Extern)) {
-                    return Err(format!(
-                        "Conflicting block-level declarations of identifier {}",
-                        declaration.variable.identifier
-                    ));
-                }
+            if entry.from_current_scope
+                && !(entry.has_linkage && declaration.storage_class == Some(StorageClass::Extern))
+            {
+                return Err(format!(
+                    "Conflicting block-level declarations of identifier {}",
+                    declaration.variable.identifier
+                ));
             }
         }
 

@@ -1,7 +1,9 @@
-use super::asm::{
-    BinaryOperator, ConditionCode, Function, FunctionDefinition, Instruction, Label, Operand,
-    Program, Reg, UnaryOperator,
+use crate::compiler::asm::{
+    BinaryOperator, ConditionCode, FunctionDefinition, Instruction, Label, Operand, Program, Reg,
+    TopLevelItem, UnaryOperator,
 };
+
+use super::asm::StaticVariable;
 
 pub fn emit(program: &Program) -> String {
     emit_program(program)
@@ -9,19 +11,34 @@ pub fn emit(program: &Program) -> String {
 
 fn emit_program(program: &Program) -> String {
     program
-        .function_definitions
+        .items
         .iter()
-        .map(emit_function_definition)
+        .map(emit_top_level_item)
         .collect::<Vec<_>>()
         .join("\n")
 }
 
-fn prefix_function(function: &Function) -> String {
-    format!("_{}", function.identifier)
+fn emit_top_level_item(item: &TopLevelItem) -> String {
+    match item {
+        TopLevelItem::FunctionDefinition(fd) => emit_function_definition(fd),
+        TopLevelItem::StaticVariable(sv) => emit_static_variable(sv),
+    }
+}
+
+fn prefix_identifier(identifier: &str) -> String {
+    format!("_{identifier}",)
+}
+
+fn build_global_directive(identifier: &str, global: bool) -> String {
+    if global {
+        format!("\t.globl\t{identifier}\n")
+    } else {
+        "".to_string()
+    }
 }
 
 fn emit_function_definition(fd: &FunctionDefinition) -> String {
-    let prefixed = prefix_function(&fd.function);
+    let prefixed = prefix_identifier(&fd.function.identifier);
 
     let instructions = fd
         .instructions
@@ -30,14 +47,39 @@ fn emit_function_definition(fd: &FunctionDefinition) -> String {
         .collect::<Vec<_>>()
         .join("\n");
 
+    let global_directive = build_global_directive(&prefixed, fd.global);
+
     format!(
-        "\t.globl\t{prefixed}
+        "{global_directive}\t.text
 {prefixed}:
 \tpushq\t%rbp
 \tmovq\t%rsp, %rbp
 {instructions}
 "
     )
+}
+
+fn emit_static_variable(sv: &StaticVariable) -> String {
+    let identifier = prefix_identifier(&sv.variable.identifier);
+    let initial = sv.initial;
+    let global_directive = build_global_directive(&sv.variable.identifier, sv.global);
+    let alignment_directive = "\t.balign 4\n";
+
+    if initial == 0 {
+        format!(
+            "{global_directive}\t.bss
+{alignment_directive}{identifier}:
+\t.zero 4
+"
+        )
+    } else {
+        format!(
+            "{global_directive}\t.data
+{alignment_directive}{identifier}:
+\t.long {initial}
+"
+        )
+    }
 }
 
 fn emit_instruction(instruction: &Instruction) -> String {
@@ -99,7 +141,7 @@ fn emit_instruction(instruction: &Instruction) -> String {
             format!("\tpushq\t{}", emit_operand(operand, RegSize::EightBytes))
         }
         Instruction::Call(function) => {
-            format!("\tcall\t{}", prefix_function(function))
+            format!("\tcall\t{}", prefix_identifier(&function.identifier))
         }
         Instruction::Ret => "\tmovq\t%rbp, %rsp
 \tpopq\t%rbp
@@ -173,6 +215,7 @@ fn emit_operand(operand: &Operand, size: RegSize) -> String {
         .to_string(),
         Operand::Stack(offset) => format!("{offset}(%rbp)"),
         Operand::Imm(value) => format!("${}", value),
+        Operand::Data(identifier) => format!("{}(%rip)", prefix_identifier(identifier)),
         Operand::Pseudo(_) => unreachable!(),
     }
 }
@@ -196,13 +239,16 @@ fn emit_condition_code(cc: &ConditionCode) -> String {
 mod tests {
     use super::*;
 
+    use crate::compiler::asm::Function;
+
     #[test]
     fn test_emit() {
         let program = Program {
-            function_definitions: vec![FunctionDefinition {
+            items: vec![TopLevelItem::FunctionDefinition(FunctionDefinition {
                 function: Function {
                     identifier: "main".to_string(),
                 },
+                global: true,
                 instructions: vec![
                     Instruction::Mov {
                         src: Operand::Imm(42),
@@ -210,10 +256,11 @@ mod tests {
                     },
                     Instruction::Ret,
                 ],
-            }],
+            })],
         };
 
         let expected = "\t.globl\t_main
+\t.text
 _main:
 \tpushq\t%rbp
 \tmovq\t%rsp, %rbp
