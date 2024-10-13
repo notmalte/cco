@@ -62,7 +62,7 @@ fn emit_function_definition(fd: &FunctionDefinition) -> String {
 fn emit_static_variable(sv: &StaticVariable) -> String {
     let identifier = prefix_identifier(&sv.variable.identifier);
     let initial = sv.initial;
-    let global_directive = build_global_directive(&sv.variable.identifier, sv.global);
+    let global_directive = build_global_directive(&identifier, sv.global);
     let alignment_directive = "\t.balign 4\n";
 
     if initial == 0 {
@@ -125,7 +125,7 @@ fn emit_instruction(instruction: &Instruction) -> String {
         }
         Instruction::Jmp { target } => format!("\tjmp\t\t{}", emit_label(target)),
         Instruction::JmpCC { cc, target } => {
-            format!("\tj{}\t{}", emit_condition_code(cc), emit_label(target))
+            format!("\tj{}\t\t{}", emit_condition_code(cc), emit_label(target))
         }
         Instruction::SetCC { cc, dst } => {
             format!(
