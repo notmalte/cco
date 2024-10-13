@@ -443,7 +443,7 @@ fn fix_up_instructions(instructions: &mut Vec<asm::Instruction>, stack_size: u64
             asm::Instruction::Binary {
                 op: asm::BinaryOperator::Mult,
                 src,
-                dst: dst @ asm::Operand::Stack(_),
+                dst: dst @ (asm::Operand::Stack(_) | asm::Operand::Data(_)),
             } => {
                 result.push(asm::Instruction::Mov {
                     src: dst.clone(),
