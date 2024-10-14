@@ -29,6 +29,12 @@ pub enum Token {
     StaticKeyword,
     /// `extern`
     ExternKeyword,
+    /// `switch`
+    SwitchKeyword,
+    /// `case`
+    CaseKeyword,
+    /// `default`
+    DefaultKeyword,
 
     /// e.g. `42`
     Constant(i64),
