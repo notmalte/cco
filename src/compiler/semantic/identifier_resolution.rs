@@ -380,6 +380,9 @@ impl IdentifierResolver {
             Statement::Null | Statement::Goto(_) | Statement::Break(_) | Statement::Continue(_) => {
                 statement.clone()
             }
+            Statement::Switch { .. } | Statement::Case { .. } | Statement::Default { .. } => {
+                todo!()
+            }
         })
     }
 

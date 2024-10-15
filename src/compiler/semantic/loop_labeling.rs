@@ -136,6 +136,9 @@ impl LoopLabeler {
             | Statement::Return(_)
             | Statement::Expression(_)
             | Statement::Goto(_) => statement.clone(),
+            Statement::Switch { .. } | Statement::Case { .. } | Statement::Default { .. } => {
+                todo!()
+            }
         })
     }
 }

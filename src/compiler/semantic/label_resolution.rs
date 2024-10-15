@@ -148,6 +148,9 @@ impl LabelResolver {
             | Statement::Goto(_)
             | Statement::Break(_)
             | Statement::Continue(_) => statement.clone(),
+            Statement::Switch { .. } | Statement::Case { .. } | Statement::Default { .. } => {
+                todo!()
+            }
         })
     }
 
@@ -237,6 +240,9 @@ impl LabelResolver {
             | Statement::Expression(_)
             | Statement::Break(_)
             | Statement::Continue(_) => statement.clone(),
+            Statement::Switch { .. } | Statement::Case { .. } | Statement::Default { .. } => {
+                todo!()
+            }
         })
     }
 }

@@ -72,6 +72,17 @@ pub enum Statement {
         body: Box<Statement>,
         label: Option<LoopLabel>,
     },
+    Switch {
+        expression: Expression,
+        body: Box<Statement>,
+    },
+    Case {
+        expression: Expression,
+        body: Box<Statement>,
+    },
+    Default {
+        body: Box<Statement>,
+    },
     Null,
 }
 

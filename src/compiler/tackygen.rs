@@ -333,6 +333,9 @@ impl TackyGen {
                 ins.push(tacky::Instruction::Label(Self::break_label(label)));
             }
             ast::Statement::Null => {}
+            ast::Statement::Switch { .. }
+            | ast::Statement::Case { .. }
+            | ast::Statement::Default { .. } => todo!(),
         }
     }
 

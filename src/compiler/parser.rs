@@ -201,6 +201,9 @@ fn parse_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
         Some(Token::WhileKeyword) => parse_while_statement(tokens),
         Some(Token::DoKeyword) => parse_do_while_statement(tokens),
         Some(Token::ForKeyword) => parse_for_statement(tokens),
+        Some(Token::SwitchKeyword) => parse_switch_statement(tokens),
+        Some(Token::CaseKeyword) => parse_case_statement(tokens),
+        Some(Token::DefaultKeyword) => parse_default_statement(tokens),
         Some(Token::Identifier(_)) => {
             if let Some(Token::Colon) = tokens.get(1) {
                 parse_labeled_statement(tokens)
@@ -426,6 +429,56 @@ fn parse_for_initializer(tokens: &mut VecDeque<Token>) -> Result<Option<ForIniti
         tokens.pop_front();
         Ok(Some(ForInitializer::Expression(expression)))
     }
+}
+
+fn parse_switch_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
+    let Some(Token::SwitchKeyword) = tokens.pop_front() else {
+        return Err("Expected switch keyword".to_string());
+    };
+
+    let Some(Token::OpenParen) = tokens.pop_front() else {
+        return Err("Expected open parenthesis".to_string());
+    };
+
+    let expression = parse_expression(tokens, 0)?;
+
+    let Some(Token::CloseParen) = tokens.pop_front() else {
+        return Err("Expected close parenthesis".to_string());
+    };
+
+    let body = Box::new(parse_statement(tokens)?);
+
+    Ok(Statement::Switch { expression, body })
+}
+
+fn parse_case_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
+    let Some(Token::CaseKeyword) = tokens.pop_front() else {
+        return Err("Expected case keyword".to_string());
+    };
+
+    let expression = parse_expression(tokens, 0)?;
+
+    let Some(Token::Colon) = tokens.pop_front() else {
+        return Err("Expected colon".to_string());
+    };
+
+    let body = Box::new(parse_statement(tokens)?);
+
+    Ok(Statement::Case { expression, body })
+}
+
+fn parse_default_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
+    let Some(Token::DefaultKeyword) = tokens.pop_front() else {
+        return Err("Expected default keyword".to_string());
+    };
+
+    let Some(Token::Colon) = tokens.pop_front() else {
+        return Err("Expected colon".to_string());
+    };
+
+    let body = Box::new(parse_statement(tokens)?);
+
+    Ok(Statement::Default { body })
 }
 
 fn parse_labeled_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
