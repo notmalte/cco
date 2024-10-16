@@ -377,11 +377,19 @@ impl IdentifierResolver {
                     label: label.clone(),
                 }
             }
+            Statement::Switch { expression, body } => Statement::Switch {
+                expression: Self::handle_expression(expression, map)?,
+                body: Box::new(self.handle_statement(body, map)?),
+            },
+            Statement::Case { expression, body } => Statement::Case {
+                expression: Self::handle_expression(expression, map)?,
+                body: Box::new(self.handle_statement(body, map)?),
+            },
+            Statement::Default { body } => Statement::Default {
+                body: Box::new(self.handle_statement(body, map)?),
+            },
             Statement::Null | Statement::Goto(_) | Statement::Break(_) | Statement::Continue(_) => {
                 statement.clone()
-            }
-            Statement::Switch { .. } | Statement::Case { .. } | Statement::Default { .. } => {
-                todo!()
             }
         })
     }
