@@ -141,6 +141,17 @@ impl LabelResolver {
                 body: Box::new(self.rewrite_label_in_statement(body, map)?),
                 label: label.clone(),
             },
+            Statement::Switch { expression, body } => Statement::Switch {
+                expression: expression.clone(),
+                body: Box::new(self.rewrite_label_in_statement(body, map)?),
+            },
+            Statement::Case { expression, body } => Statement::Case {
+                expression: expression.clone(),
+                body: Box::new(self.rewrite_label_in_statement(body, map)?),
+            },
+            Statement::Default { body } => Statement::Default {
+                body: Box::new(self.rewrite_label_in_statement(body, map)?),
+            },
 
             Statement::Null
             | Statement::Return(_)
@@ -148,9 +159,6 @@ impl LabelResolver {
             | Statement::Goto(_)
             | Statement::Break(_)
             | Statement::Continue(_) => statement.clone(),
-            Statement::Switch { .. } | Statement::Case { .. } | Statement::Default { .. } => {
-                todo!()
-            }
         })
     }
 
@@ -234,15 +242,23 @@ impl LabelResolver {
                 body: Box::new(self.rewrite_goto_in_statement(body, map)?),
                 label: label.clone(),
             },
+            Statement::Switch { expression, body } => Statement::Switch {
+                expression: expression.clone(),
+                body: Box::new(self.rewrite_goto_in_statement(body, map)?),
+            },
+            Statement::Case { expression, body } => Statement::Case {
+                expression: expression.clone(),
+                body: Box::new(self.rewrite_goto_in_statement(body, map)?),
+            },
+            Statement::Default { body } => Statement::Default {
+                body: Box::new(self.rewrite_goto_in_statement(body, map)?),
+            },
 
             Statement::Null
             | Statement::Return(_)
             | Statement::Expression(_)
             | Statement::Break(_)
             | Statement::Continue(_) => statement.clone(),
-            Statement::Switch { .. } | Statement::Case { .. } | Statement::Default { .. } => {
-                todo!()
-            }
         })
     }
 }

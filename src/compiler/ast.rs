@@ -53,7 +53,7 @@ pub enum Statement {
     Goto(Label),
     Labeled(Label, Box<Statement>),
     Compound(Block),
-    Break(Option<LoopLabel>),
+    Break(Option<LoopOrSwitchLabel>),
     Continue(Option<LoopLabel>),
     While {
         condition: Expression,
@@ -75,13 +75,16 @@ pub enum Statement {
     Switch {
         expression: Expression,
         body: Box<Statement>,
+        cases: Option<SwitchCases>,
     },
     Case {
         expression: Expression,
         body: Box<Statement>,
+        label: Option<SwitchCaseLabel>,
     },
     Default {
         body: Box<Statement>,
+        label: Option<SwitchCaseLabel>,
     },
     Null,
 }
@@ -185,6 +188,28 @@ pub struct LoopLabel {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct SwitchLabel {
+    pub identifier: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum LoopOrSwitchLabel {
+    Loop(LoopLabel),
+    Switch(SwitchLabel),
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct Function {
     pub identifier: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SwitchCaseLabel {
+    pub identifier: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SwitchCases {
+    cases: Vec<(Expression, SwitchCaseLabel)>,
+    default: Option<SwitchCaseLabel>,
 }
