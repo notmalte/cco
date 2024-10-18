@@ -448,7 +448,11 @@ fn parse_switch_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, Str
 
     let body = Box::new(parse_statement(tokens)?);
 
-    Ok(Statement::Switch { expression, body })
+    Ok(Statement::Switch {
+        expression,
+        body,
+        cases: None,
+    })
 }
 
 fn parse_case_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
@@ -464,7 +468,11 @@ fn parse_case_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, Strin
 
     let body = Box::new(parse_statement(tokens)?);
 
-    Ok(Statement::Case { expression, body })
+    Ok(Statement::Case {
+        expression,
+        body,
+        label: None,
+    })
 }
 
 fn parse_default_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
@@ -478,7 +486,7 @@ fn parse_default_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, St
 
     let body = Box::new(parse_statement(tokens)?);
 
-    Ok(Statement::Default { body })
+    Ok(Statement::Default { body, label: None })
 }
 
 fn parse_labeled_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, String> {
