@@ -197,13 +197,24 @@ impl LoopSwitchLabeler {
                     cases: cases.clone(),
                 }
             }
+            Statement::Case {
+                expression,
+                body,
+                label,
+            } => Statement::Case {
+                expression: expression.clone(),
+                body: Box::new(self.handle_statement(body, enclosing)?),
+                label: label.clone(),
+            },
+            Statement::Default { body, label } => Statement::Default {
+                body: Box::new(self.handle_statement(body, enclosing)?),
+                label: label.clone(),
+            },
 
             Statement::Null
             | Statement::Return(_)
             | Statement::Expression(_)
-            | Statement::Goto(_)
-            | Statement::Case { .. }
-            | Statement::Default { .. } => statement.clone(),
+            | Statement::Goto(_) => statement.clone(),
         })
     }
 }
