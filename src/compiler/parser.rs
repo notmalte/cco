@@ -452,6 +452,7 @@ fn parse_switch_statement(tokens: &mut VecDeque<Token>) -> Result<Statement, Str
         expression,
         body,
         cases: None,
+        label: None,
     })
 }
 

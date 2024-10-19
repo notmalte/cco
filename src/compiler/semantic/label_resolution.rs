@@ -145,10 +145,12 @@ impl LabelResolver {
                 expression,
                 body,
                 cases,
+                label,
             } => Statement::Switch {
                 expression: expression.clone(),
                 body: Box::new(self.rewrite_label_in_statement(body, map)?),
                 cases: cases.clone(),
+                label: label.clone(),
             },
             Statement::Case {
                 expression,
@@ -257,10 +259,12 @@ impl LabelResolver {
                 expression,
                 body,
                 cases,
+                label,
             } => Statement::Switch {
                 expression: expression.clone(),
                 body: Box::new(self.rewrite_goto_in_statement(body, map)?),
                 cases: cases.clone(),
+                label: label.clone(),
             },
             Statement::Case {
                 expression,

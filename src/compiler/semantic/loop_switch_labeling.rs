@@ -56,14 +56,8 @@ impl LoopSwitchLabeler {
         LoopLabel { identifier: name }
     }
 
-    fn fresh_switch_label(&mut self, suffix: Option<&str>) -> SwitchLabel {
-        let name = match suffix {
-            Some(suffix) => format!(
-                "{SEMANTIC_SWITCH_PREFIX}.{}.{}",
-                self.switch_counter, suffix
-            ),
-            None => format!("{SEMANTIC_SWITCH_PREFIX}.{}", self.switch_counter),
-        };
+    fn fresh_switch_label(&mut self) -> SwitchLabel {
+        let name = format!("{SEMANTIC_SWITCH_PREFIX}.{}", self.switch_counter);
         self.switch_counter += 1;
 
         SwitchLabel { identifier: name }
@@ -160,6 +154,28 @@ impl LoopSwitchLabeler {
                 }
             }
 
+            Statement::Switch {
+                expression,
+                body,
+                cases,
+                label: _,
+            } => {
+                let fresh = self.fresh_switch_label();
+
+                Statement::Switch {
+                    expression: expression.clone(),
+                    body: Box::new(self.handle_statement(
+                        body,
+                        &Enclosing {
+                            breakable: Some(LoopOrSwitchLabel::Switch(fresh.clone())),
+                            continuable: enclosing.continuable.clone(),
+                        },
+                    )?),
+                    cases: cases.clone(),
+                    label: Some(fresh),
+                }
+            }
+
             Statement::If {
                 condition,
                 then_branch,
@@ -178,25 +194,6 @@ impl LoopSwitchLabeler {
                 Box::new(self.handle_statement(statement, enclosing)?),
             ),
             Statement::Compound(block) => Statement::Compound(self.handle_block(block, enclosing)?),
-            Statement::Switch {
-                expression,
-                body,
-                cases,
-            } => {
-                let fresh = self.fresh_switch_label(None);
-
-                Statement::Switch {
-                    expression: expression.clone(),
-                    body: Box::new(self.handle_statement(
-                        body,
-                        &Enclosing {
-                            breakable: Some(LoopOrSwitchLabel::Switch(fresh.clone())),
-                            continuable: enclosing.continuable.clone(),
-                        },
-                    )?),
-                    cases: cases.clone(),
-                }
-            }
             Statement::Case {
                 expression,
                 body,

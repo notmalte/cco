@@ -76,6 +76,7 @@ pub enum Statement {
         expression: Expression,
         body: Box<Statement>,
         cases: Option<SwitchCases>,
+        label: Option<SwitchLabel>,
     },
     Case {
         expression: Expression,

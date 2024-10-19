@@ -381,10 +381,12 @@ impl IdentifierResolver {
                 expression,
                 body,
                 cases,
+                label,
             } => Statement::Switch {
                 expression: Self::handle_expression(expression, map)?,
                 body: Box::new(self.handle_statement(body, map)?),
                 cases: cases.clone(),
+                label: label.clone(),
             },
             Statement::Case {
                 expression,

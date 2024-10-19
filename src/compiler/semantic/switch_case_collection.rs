@@ -118,6 +118,7 @@ impl SwitchCaseCollector {
                 expression,
                 body,
                 cases: _,
+                label,
             } => {
                 let (new_body, collected_cases) = self.handle_statement(body)?;
 
@@ -126,6 +127,7 @@ impl SwitchCaseCollector {
                         expression: expression.clone(),
                         body: Box::new(new_body),
                         cases: collected_cases,
+                        label: label.clone(),
                     },
                     None,
                 )
@@ -140,7 +142,7 @@ impl SwitchCaseCollector {
                     return Err("Non-constant expression in switch case".to_string());
                 };
 
-                let case_label = self.fresh_switch_case_label(Some(&n.to_string()));
+                let case_label = self.fresh_switch_case_label(Some(&format!("value.{n}")));
                 let (new_body, inner_cases) = self.handle_statement(body)?;
 
                 let merged = Self::merge_and_verify_switch_cases(

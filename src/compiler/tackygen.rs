@@ -55,6 +55,10 @@ impl TackyGen {
         Self::break_label(&ast::LoopOrSwitchLabel::Loop(label.clone()))
     }
 
+    fn break_switch_label(label: &ast::SwitchLabel) -> tacky::Label {
+        Self::break_label(&ast::LoopOrSwitchLabel::Switch(label.clone()))
+    }
+
     fn continue_label(label: &ast::LoopLabel) -> tacky::Label {
         tacky::Label {
             identifier: format!("{}.continue", label.identifier),
@@ -342,10 +346,88 @@ impl TackyGen {
                 });
                 ins.push(tacky::Instruction::Label(Self::break_loop_label(label)));
             }
+            ast::Statement::Switch {
+                expression,
+                body,
+                cases,
+                label,
+            } => {
+                let Some(label) = label else {
+                    unreachable!();
+                };
+
+                let controlling_value = self.handle_expression(ins, expression);
+
+                if let Some(cases) = cases {
+                    for (case_expr, case_label) in &cases.cases {
+                        let ast::Expression::Constant(case_expr) = case_expr else {
+                            unreachable!()
+                        };
+
+                        let dst = self.fresh_variable();
+                        ins.push(tacky::Instruction::Binary {
+                            op: tacky::BinaryOperator::Equal,
+                            lhs: controlling_value.clone(),
+                            rhs: tacky::Value::Constant(*case_expr),
+                            dst: dst.clone(),
+                        });
+
+                        ins.push(tacky::Instruction::JumpIfNotZero {
+                            condition: tacky::Value::Variable(dst),
+                            target: tacky::Label {
+                                identifier: case_label.identifier.clone(),
+                            },
+                        });
+                    }
+
+                    if let Some(default_label) = &cases.default {
+                        ins.push(tacky::Instruction::Jump {
+                            target: tacky::Label {
+                                identifier: default_label.identifier.clone(),
+                            },
+                        });
+                    } else {
+                        ins.push(tacky::Instruction::Jump {
+                            target: Self::break_switch_label(label),
+                        });
+                    }
+                } else {
+                    ins.push(tacky::Instruction::Jump {
+                        target: Self::break_switch_label(label),
+                    });
+                }
+
+                self.handle_statement(ins, body);
+
+                ins.push(tacky::Instruction::Label(Self::break_switch_label(label)));
+            }
+            ast::Statement::Case {
+                expression: _,
+                body,
+                label,
+            } => {
+                let Some(label) = label else {
+                    unreachable!();
+                };
+
+                ins.push(tacky::Instruction::Label(tacky::Label {
+                    identifier: label.identifier.clone(),
+                }));
+
+                self.handle_statement(ins, body);
+            }
+            ast::Statement::Default { body, label } => {
+                let Some(label) = label else {
+                    unreachable!();
+                };
+
+                ins.push(tacky::Instruction::Label(tacky::Label {
+                    identifier: label.identifier.clone(),
+                }));
+
+                self.handle_statement(ins, body);
+            }
             ast::Statement::Null => {}
-            ast::Statement::Switch { .. }
-            | ast::Statement::Case { .. }
-            | ast::Statement::Default { .. } => todo!(),
         }
     }
 

@@ -305,6 +305,7 @@ impl TypeChecker {
                 expression,
                 body,
                 cases,
+                label,
             } => {
                 let expression = self.handle_expression(expression)?;
                 let body = Box::new(self.handle_statement(body)?);
@@ -313,6 +314,7 @@ impl TypeChecker {
                     expression,
                     body,
                     cases: cases.clone(),
+                    label: label.clone(),
                 }
             }
             Statement::Case {
