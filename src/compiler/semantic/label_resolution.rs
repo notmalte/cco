@@ -141,16 +141,27 @@ impl LabelResolver {
                 body: Box::new(self.rewrite_label_in_statement(body, map)?),
                 label: label.clone(),
             },
-            Statement::Switch { expression, body } => Statement::Switch {
+            Statement::Switch {
+                expression,
+                body,
+                cases,
+            } => Statement::Switch {
                 expression: expression.clone(),
                 body: Box::new(self.rewrite_label_in_statement(body, map)?),
+                cases: cases.clone(),
             },
-            Statement::Case { expression, body } => Statement::Case {
+            Statement::Case {
+                expression,
+                body,
+                label,
+            } => Statement::Case {
                 expression: expression.clone(),
                 body: Box::new(self.rewrite_label_in_statement(body, map)?),
+                label: label.clone(),
             },
-            Statement::Default { body } => Statement::Default {
+            Statement::Default { body, label } => Statement::Default {
                 body: Box::new(self.rewrite_label_in_statement(body, map)?),
+                label: label.clone(),
             },
 
             Statement::Null
@@ -242,16 +253,27 @@ impl LabelResolver {
                 body: Box::new(self.rewrite_goto_in_statement(body, map)?),
                 label: label.clone(),
             },
-            Statement::Switch { expression, body } => Statement::Switch {
+            Statement::Switch {
+                expression,
+                body,
+                cases,
+            } => Statement::Switch {
                 expression: expression.clone(),
                 body: Box::new(self.rewrite_goto_in_statement(body, map)?),
+                cases: cases.clone(),
             },
-            Statement::Case { expression, body } => Statement::Case {
+            Statement::Case {
+                expression,
+                body,
+                label,
+            } => Statement::Case {
                 expression: expression.clone(),
                 body: Box::new(self.rewrite_goto_in_statement(body, map)?),
+                label: label.clone(),
             },
-            Statement::Default { body } => Statement::Default {
+            Statement::Default { body, label } => Statement::Default {
                 body: Box::new(self.rewrite_goto_in_statement(body, map)?),
+                label: label.clone(),
             },
 
             Statement::Null

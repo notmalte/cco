@@ -301,11 +301,42 @@ impl TypeChecker {
                     label: label.clone(),
                 }
             }
+            Statement::Switch {
+                expression,
+                body,
+                cases,
+            } => {
+                let expression = self.handle_expression(expression)?;
+                let body = Box::new(self.handle_statement(body)?);
+
+                Statement::Switch {
+                    expression,
+                    body,
+                    cases: cases.clone(),
+                }
+            }
+            Statement::Case {
+                expression,
+                body,
+                label,
+            } => {
+                let Expression::Constant(_) = expression else {
+                    return Err("Non-constant expression in switch case".to_string());
+                };
+
+                Statement::Case {
+                    expression: expression.clone(),
+                    body: Box::new(self.handle_statement(body)?),
+                    label: label.clone(),
+                }
+            }
+            Statement::Default { body, label } => Statement::Default {
+                body: Box::new(self.handle_statement(body)?),
+                label: label.clone(),
+            },
+
             Statement::Null | Statement::Goto(_) | Statement::Break(_) | Statement::Continue(_) => {
                 statement.clone()
-            }
-            Statement::Switch { .. } | Statement::Case { .. } | Statement::Default { .. } => {
-                todo!()
             }
         })
     }

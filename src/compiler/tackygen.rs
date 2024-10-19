@@ -39,10 +39,20 @@ impl TackyGen {
         tacky::Label { identifier: name }
     }
 
-    fn break_label(label: &ast::LoopLabel) -> tacky::Label {
+    fn break_label(label: &ast::LoopOrSwitchLabel) -> tacky::Label {
         tacky::Label {
-            identifier: format!("{}.break", label.identifier),
+            identifier: format!(
+                "{}.break",
+                match label {
+                    ast::LoopOrSwitchLabel::Loop(loop_label) => &loop_label.identifier,
+                    ast::LoopOrSwitchLabel::Switch(switch_label) => &switch_label.identifier,
+                }
+            ),
         }
+    }
+
+    fn break_loop_label(label: &ast::LoopLabel) -> tacky::Label {
+        Self::break_label(&ast::LoopOrSwitchLabel::Loop(label.clone()))
     }
 
     fn continue_label(label: &ast::LoopLabel) -> tacky::Label {
@@ -264,13 +274,13 @@ impl TackyGen {
                 let condition_value = self.handle_expression(ins, condition);
                 ins.push(tacky::Instruction::JumpIfZero {
                     condition: condition_value,
-                    target: Self::break_label(label),
+                    target: Self::break_loop_label(label),
                 });
                 self.handle_statement(ins, body);
                 ins.push(tacky::Instruction::Jump {
                     target: Self::continue_label(label),
                 });
-                ins.push(tacky::Instruction::Label(Self::break_label(label)));
+                ins.push(tacky::Instruction::Label(Self::break_loop_label(label)));
             }
             ast::Statement::DoWhile {
                 body,
@@ -290,7 +300,7 @@ impl TackyGen {
                     condition: condition_value,
                     target: start_label.clone(),
                 });
-                ins.push(tacky::Instruction::Label(Self::break_label(label)));
+                ins.push(tacky::Instruction::Label(Self::break_loop_label(label)));
             }
             ast::Statement::For {
                 initializer,
@@ -319,7 +329,7 @@ impl TackyGen {
                     let condition_value = self.handle_expression(ins, condition);
                     ins.push(tacky::Instruction::JumpIfZero {
                         condition: condition_value,
-                        target: Self::break_label(label),
+                        target: Self::break_loop_label(label),
                     });
                 }
                 self.handle_statement(ins, body);
@@ -330,7 +340,7 @@ impl TackyGen {
                 ins.push(tacky::Instruction::Jump {
                     target: start_label.clone(),
                 });
-                ins.push(tacky::Instruction::Label(Self::break_label(label)));
+                ins.push(tacky::Instruction::Label(Self::break_loop_label(label)));
             }
             ast::Statement::Null => {}
             ast::Statement::Switch { .. }
