@@ -608,10 +608,10 @@ fn parse_expression(
 
 fn parse_factor(tokens: &mut VecDeque<Token>) -> Result<Expression, String> {
     let mut factor = match tokens.front().cloned() {
-        Some(Token::Constant(value)) => {
-            tokens.pop_front();
-            Expression::Constant(value)
-        }
+        // Some(Token::Constant(value)) => {
+        //     tokens.pop_front();
+        //     Expression::Constant(value)
+        // }
         Some(Token::Identifier(identifier)) => {
             tokens.pop_front();
 

@@ -34,11 +34,20 @@ fn find_first_token(s: &str) -> Option<(Token, &str)> {
         return Some((t, rest));
     }
 
+    if let Some(m) = Regex::new(r"^(\d+)[lL]\b").unwrap().captures(s) {
+        let ms = m.get(1).unwrap().as_str();
+        let rest = &s[m.get(0).unwrap().end()..];
+
+        let t = Token::ConstantLong(ms.to_string());
+
+        return Some((t, rest));
+    }
+
     if let Some(m) = Regex::new(r"^\d+\b").unwrap().find(s) {
         let ms = m.as_str();
         let rest = &s[m.end()..];
 
-        let t = Token::Constant(ms.parse().unwrap());
+        let t = Token::ConstantInt(ms.to_string());
 
         return Some((t, rest));
     }

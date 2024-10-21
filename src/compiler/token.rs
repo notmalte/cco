@@ -36,8 +36,10 @@ pub enum Token {
     /// `default`
     DefaultKeyword,
 
-    /// e.g. `42`
-    Constant(i64),
+    /// 4 byte (32 bit) integer
+    ConstantInt(String),
+    /// 8 byte (64 bit) integer
+    ConstantLong(String),
 
     /// `(`
     OpenParen,
