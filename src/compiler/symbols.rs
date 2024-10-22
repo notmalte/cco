@@ -1,4 +1,4 @@
-use crate::compiler::types::Type;
+use crate::compiler::ast::Type;
 
 use std::collections::{hash_map::Iter, HashMap};
 
@@ -24,7 +24,7 @@ pub enum SymbolInitialValue {
 
 #[derive(Debug, Clone)]
 pub struct Symbol {
-    pub t: Type,
+    pub ty: Type,
     pub attrs: SymbolAttributes,
 }
 

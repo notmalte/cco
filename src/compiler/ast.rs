@@ -1,3 +1,13 @@
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Type {
+    Int,
+    Long,
+    Function {
+        return_type: Box<Type>,
+        parameters: Vec<Type>,
+    },
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program {
     pub declarations: Vec<Declaration>,
@@ -13,6 +23,7 @@ pub enum Declaration {
 pub struct VariableDeclaration {
     pub variable: Variable,
     pub initializer: Option<Expression>,
+    pub ty: Type,
     pub storage_class: Option<StorageClass>,
 }
 
@@ -21,6 +32,7 @@ pub struct FunctionDeclaration {
     pub function: Function,
     pub parameters: Vec<Variable>,
     pub body: Option<Block>,
+    pub ty: Type,
     pub storage_class: Option<StorageClass>,
 }
 
@@ -98,8 +110,12 @@ pub enum ForInitializer {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
-    Constant(i64),
+    Constant(Constant),
     Variable(Variable),
+    Cast {
+        ty: Type,
+        expr: Box<Expression>,
+    },
     Unary {
         op: UnaryOperator,
         expr: Box<Expression>,
@@ -213,4 +229,10 @@ pub struct SwitchCaseLabel {
 pub struct SwitchCases {
     pub cases: Vec<(Expression, SwitchCaseLabel)>,
     pub default: Option<SwitchCaseLabel>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Constant {
+    ConstantInt(i32),
+    ConstantLong(i64),
 }

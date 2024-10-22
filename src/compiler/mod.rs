@@ -10,7 +10,6 @@ mod symbols;
 mod tacky;
 mod tackygen;
 mod token;
-mod types;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompilerStage {

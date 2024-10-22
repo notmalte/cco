@@ -4,10 +4,9 @@ use crate::compiler::{
     ast::{
         AssignmentOperator, BinaryOperator, Block, BlockItem, Declaration, Expression,
         ForInitializer, Function, FunctionDeclaration, Label, Program, Statement, StorageClass,
-        UnaryOperator, Variable, VariableDeclaration,
+        Type, UnaryOperator, Variable, VariableDeclaration,
     },
     token::Token,
-    types::Type,
 };
 
 pub fn parse(tokens: &[Token]) -> Result<Program, String> {

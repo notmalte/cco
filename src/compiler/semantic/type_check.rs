@@ -1,10 +1,9 @@
 use crate::compiler::{
     ast::{
         Block, BlockItem, Declaration, Expression, ForInitializer, FunctionDeclaration, Program,
-        Statement, StorageClass, VariableDeclaration,
+        Statement, StorageClass, Type, VariableDeclaration,
     },
     symbols::{Symbol, SymbolAttributes, SymbolInitialValue, SymbolTable},
-    types::Type,
 };
 
 pub struct TypeChecker {
@@ -54,7 +53,7 @@ impl TypeChecker {
         &mut self,
         declaration: &VariableDeclaration,
     ) -> Result<VariableDeclaration, String> {
-        let t = Type::Int;
+        let ty = Type::Int;
 
         let mut initial = match declaration.initializer {
             Some(Expression::Constant(i)) => SymbolInitialValue::Initial(i),
@@ -71,7 +70,7 @@ impl TypeChecker {
         let mut global = declaration.storage_class != Some(StorageClass::Static);
 
         if let Some(entry) = self.symbols.get(&declaration.variable.identifier) {
-            if entry.t != t {
+            if entry.ty != ty {
                 return Err(format!(
                     "Incompatible redeclaration of variable {}",
                     declaration.variable.identifier
@@ -118,7 +117,7 @@ impl TypeChecker {
         self.symbols.insert(
             declaration.variable.identifier.clone(),
             Symbol {
-                t: Type::Int,
+                ty: Type::Int,
                 attrs: SymbolAttributes::Static { initial, global },
             },
         );
@@ -130,7 +129,7 @@ impl TypeChecker {
         &mut self,
         declaration: &FunctionDeclaration,
     ) -> Result<FunctionDeclaration, String> {
-        let t = Type::Function {
+        let ty = Type::Function {
             parameter_count: declaration.parameters.len(),
         };
 
@@ -139,7 +138,7 @@ impl TypeChecker {
         let mut global = declaration.storage_class != Some(StorageClass::Static);
 
         if let Some(entry) = self.symbols.get(&declaration.function.identifier) {
-            if entry.t != t {
+            if entry.ty != ty {
                 return Err(format!(
                     "Incompatible redeclaration of function {}",
                     declaration.function.identifier
@@ -176,7 +175,7 @@ impl TypeChecker {
         self.symbols.insert(
             declaration.function.identifier.clone(),
             Symbol {
-                t,
+                ty,
                 attrs: SymbolAttributes::Function {
                     defined: already_defined || has_body,
                     global,
@@ -189,7 +188,7 @@ impl TypeChecker {
                 self.symbols.insert(
                     parameter.identifier.clone(),
                     Symbol {
-                        t: Type::Int,
+                        ty: Type::Int,
                         attrs: SymbolAttributes::Local,
                     },
                 );
@@ -361,7 +360,7 @@ impl TypeChecker {
         &mut self,
         declaration: &VariableDeclaration,
     ) -> Result<VariableDeclaration, String> {
-        let t = Type::Int;
+        let ty = Type::Int;
 
         Ok(match declaration.storage_class {
             Some(StorageClass::Extern) => {
@@ -372,7 +371,7 @@ impl TypeChecker {
                 }
 
                 if let Some(entry) = self.symbols.get(&declaration.variable.identifier) {
-                    if entry.t != t {
+                    if entry.ty != ty {
                         return Err(format!(
                             "Incompatible redeclaration of variable {}",
                             declaration.variable.identifier
@@ -382,7 +381,7 @@ impl TypeChecker {
                     self.symbols.insert(
                         declaration.variable.identifier.clone(),
                         Symbol {
-                            t,
+                            ty,
                             attrs: SymbolAttributes::Static {
                                 initial: SymbolInitialValue::None,
                                 global: true,
@@ -407,7 +406,7 @@ impl TypeChecker {
                 self.symbols.insert(
                     declaration.variable.identifier.clone(),
                     Symbol {
-                        t,
+                        ty,
                         attrs: SymbolAttributes::Static {
                             initial,
                             global: false,
@@ -421,7 +420,7 @@ impl TypeChecker {
                 self.symbols.insert(
                     declaration.variable.identifier.clone(),
                     Symbol {
-                        t,
+                        ty,
                         attrs: SymbolAttributes::Local,
                     },
                 );
@@ -449,7 +448,7 @@ impl TypeChecker {
             } => {
                 let entry = self.symbols.get(&function.identifier).unwrap();
 
-                let Type::Function { parameter_count } = entry.t else {
+                let Type::Function { parameter_count } = entry.ty else {
                     return Err(format!("{} is not a function", function.identifier));
                 };
 
@@ -471,7 +470,7 @@ impl TypeChecker {
             Expression::Variable(variable) => {
                 let entry = self.symbols.get(&variable.identifier).unwrap();
 
-                let Type::Int = entry.t else {
+                let Type::Int = entry.ty else {
                     return Err(format!("{} is not a variable", variable.identifier));
                 };
 
