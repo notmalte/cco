@@ -7,6 +7,9 @@ pub enum Token {
     VoidKeyword,
     /// `int`
     IntKeyword,
+    /// `long`
+    LongKeyword,
+
     /// `return`
     ReturnKeyword,
     /// `if`

@@ -14,6 +14,7 @@ fn find_first_token(s: &str) -> Option<(Token, &str)> {
         let t = match ms {
             "void" => Token::VoidKeyword,
             "int" => Token::IntKeyword,
+            "long" => Token::LongKeyword,
             "return" => Token::ReturnKeyword,
             "if" => Token::IfKeyword,
             "else" => Token::ElseKeyword,
