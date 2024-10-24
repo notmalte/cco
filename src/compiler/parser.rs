@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, u64};
+use std::collections::VecDeque;
 
 use crate::compiler::{
     ast::{
@@ -803,7 +803,7 @@ mod tests {
             Token::CloseParen,
             Token::OpenBrace,
             Token::ReturnKeyword,
-            Token::Constant(42),
+            Token::ConstantInt("42".to_string()),
             Token::Semicolon,
             Token::CloseBrace,
         ];
@@ -816,9 +816,13 @@ mod tests {
                 parameters: vec![],
                 body: Some(Block {
                     items: vec![BlockItem::Statement(Statement::Return(
-                        Expression::Constant(42),
+                        Expression::Constant(Constant::ConstantInt(42)),
                     ))],
                 }),
+                ty: Type::Function {
+                    return_type: Box::new(Type::Int),
+                    parameters: Vec::new(),
+                },
                 storage_class: None,
             })],
         };
@@ -836,7 +840,7 @@ mod tests {
             Token::CloseParen,
             Token::OpenBrace,
             Token::ReturnKeyword,
-            Token::Constant(42),
+            Token::ConstantInt("42".to_string()),
             Token::CloseBrace,
         ];
 

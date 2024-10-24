@@ -133,7 +133,7 @@ mod tests {
             ("void", Token::VoidKeyword),
             ("int", Token::IntKeyword),
             ("return", Token::ReturnKeyword),
-            ("42", Token::Constant(42)),
+            ("42", Token::ConstantInt("42".to_string())),
             ("(", Token::OpenParen),
             (")", Token::CloseParen),
             ("{", Token::OpenBrace),
@@ -161,7 +161,7 @@ mod tests {
             Token::CloseParen,
             Token::OpenBrace,
             Token::ReturnKeyword,
-            Token::Constant(2),
+            Token::ConstantInt("2".to_string()),
             Token::Semicolon,
             Token::CloseBrace,
         ]);
@@ -214,7 +214,7 @@ mod tests {
             Token::CloseParen,
             Token::OpenBrace,
             Token::ReturnKeyword,
-            Token::Constant(2),
+            Token::ConstantInt("2".to_string()),
             Token::Semicolon,
             Token::CloseBrace,
         ]);
@@ -224,28 +224,49 @@ mod tests {
 
     #[test]
     fn test_unary_ops() {
-        assert_eq!(tokenize("-42"), Ok(vec![Token::Minus, Token::Constant(42)]));
+        assert_eq!(
+            tokenize("-42"),
+            Ok(vec![Token::Minus, Token::ConstantInt("42".to_string())])
+        );
 
         assert_eq!(
             tokenize("--42"),
-            Ok(vec![Token::MinusMinus, Token::Constant(42)])
+            Ok(vec![
+                Token::MinusMinus,
+                Token::ConstantInt("42".to_string())
+            ])
         );
 
-        assert_eq!(tokenize("~42"), Ok(vec![Token::Tilde, Token::Constant(42)]));
+        assert_eq!(
+            tokenize("~42"),
+            Ok(vec![Token::Tilde, Token::ConstantInt("42".to_string())])
+        );
 
         assert_eq!(
             tokenize("~~42"),
-            Ok(vec![Token::Tilde, Token::Tilde, Token::Constant(42)])
+            Ok(vec![
+                Token::Tilde,
+                Token::Tilde,
+                Token::ConstantInt("42".to_string())
+            ])
         );
 
         assert_eq!(
             tokenize("~-42"),
-            Ok(vec![Token::Tilde, Token::Minus, Token::Constant(42)])
+            Ok(vec![
+                Token::Tilde,
+                Token::Minus,
+                Token::ConstantInt("42".to_string())
+            ])
         );
 
         assert_eq!(
             tokenize("-~42"),
-            Ok(vec![Token::Minus, Token::Tilde, Token::Constant(42)])
+            Ok(vec![
+                Token::Minus,
+                Token::Tilde,
+                Token::ConstantInt("42".to_string())
+            ])
         );
 
         assert_eq!(
@@ -254,7 +275,7 @@ mod tests {
                 Token::Minus,
                 Token::OpenParen,
                 Token::Minus,
-                Token::Constant(42),
+                Token::ConstantInt("42".to_string()),
                 Token::CloseParen,
             ])
         );
