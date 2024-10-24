@@ -53,158 +53,162 @@ impl TypeChecker {
         &mut self,
         declaration: &VariableDeclaration,
     ) -> Result<VariableDeclaration, String> {
-        let ty = Type::Int;
+        todo!();
 
-        let mut initial = match declaration.initializer {
-            Some(Expression::Constant(i)) => SymbolInitialValue::Initial(i),
-            None => {
-                if declaration.storage_class == Some(StorageClass::Extern) {
-                    SymbolInitialValue::None
-                } else {
-                    SymbolInitialValue::Tentative
-                }
-            }
-            _ => return Err("Non-constant initializer".to_string()),
-        };
+        // let ty = Type::Int;
 
-        let mut global = declaration.storage_class != Some(StorageClass::Static);
+        // let mut initial = match declaration.initializer {
+        //     Some(Expression::Constant(i)) => SymbolInitialValue::Initial(i),
+        //     None => {
+        //         if declaration.storage_class == Some(StorageClass::Extern) {
+        //             SymbolInitialValue::None
+        //         } else {
+        //             SymbolInitialValue::Tentative
+        //         }
+        //     }
+        //     _ => return Err("Non-constant initializer".to_string()),
+        // };
 
-        if let Some(entry) = self.symbols.get(&declaration.variable.identifier) {
-            if entry.ty != ty {
-                return Err(format!(
-                    "Incompatible redeclaration of variable {}",
-                    declaration.variable.identifier
-                ));
-            }
+        // let mut global = declaration.storage_class != Some(StorageClass::Static);
 
-            let SymbolAttributes::Static {
-                initial: entry_initial,
-                global: entry_global,
-            } = entry.attrs
-            else {
-                unreachable!()
-            };
+        // if let Some(entry) = self.symbols.get(&declaration.variable.identifier) {
+        //     if entry.ty != ty {
+        //         return Err(format!(
+        //             "Incompatible redeclaration of variable {}",
+        //             declaration.variable.identifier
+        //         ));
+        //     }
 
-            if declaration.storage_class == Some(StorageClass::Extern) {
-                global = entry_global;
-            } else if entry_global != global {
-                return Err(format!(
-                    "Conflicting variable linkage of {}",
-                    declaration.variable.identifier
-                ));
-            }
+        //     let SymbolAttributes::Static {
+        //         initial: entry_initial,
+        //         global: entry_global,
+        //     } = entry.attrs
+        //     else {
+        //         unreachable!()
+        //     };
 
-            match entry_initial {
-                SymbolInitialValue::Initial(_) => {
-                    if let SymbolInitialValue::Initial(_) = initial {
-                        return Err(format!(
-                            "Conflicting file scope variable definition of {}",
-                            declaration.variable.identifier
-                        ));
-                    }
+        //     if declaration.storage_class == Some(StorageClass::Extern) {
+        //         global = entry_global;
+        //     } else if entry_global != global {
+        //         return Err(format!(
+        //             "Conflicting variable linkage of {}",
+        //             declaration.variable.identifier
+        //         ));
+        //     }
 
-                    initial = entry_initial;
-                }
-                SymbolInitialValue::Tentative => {
-                    if !matches!(initial, SymbolInitialValue::Initial(_)) {
-                        initial = SymbolInitialValue::Tentative;
-                    }
-                }
-                _ => {}
-            };
-        }
+        //     match entry_initial {
+        //         SymbolInitialValue::Initial(_) => {
+        //             if let SymbolInitialValue::Initial(_) = initial {
+        //                 return Err(format!(
+        //                     "Conflicting file scope variable definition of {}",
+        //                     declaration.variable.identifier
+        //                 ));
+        //             }
 
-        self.symbols.insert(
-            declaration.variable.identifier.clone(),
-            Symbol {
-                ty: Type::Int,
-                attrs: SymbolAttributes::Static { initial, global },
-            },
-        );
+        //             initial = entry_initial;
+        //         }
+        //         SymbolInitialValue::Tentative => {
+        //             if !matches!(initial, SymbolInitialValue::Initial(_)) {
+        //                 initial = SymbolInitialValue::Tentative;
+        //             }
+        //         }
+        //         _ => {}
+        //     };
+        // }
 
-        Ok(declaration.clone())
+        // self.symbols.insert(
+        //     declaration.variable.identifier.clone(),
+        //     Symbol {
+        //         ty: Type::Int,
+        //         attrs: SymbolAttributes::Static { initial, global },
+        //     },
+        // );
+
+        // Ok(declaration.clone())
     }
 
     fn handle_function_declaration(
         &mut self,
         declaration: &FunctionDeclaration,
     ) -> Result<FunctionDeclaration, String> {
-        let ty = Type::Function {
-            parameter_count: declaration.parameters.len(),
-        };
+        todo!();
 
-        let has_body = declaration.body.is_some();
-        let mut already_defined = false;
-        let mut global = declaration.storage_class != Some(StorageClass::Static);
+        // let ty = Type::Function {
+        //     parameter_count: declaration.parameters.len(),
+        // };
 
-        if let Some(entry) = self.symbols.get(&declaration.function.identifier) {
-            if entry.ty != ty {
-                return Err(format!(
-                    "Incompatible redeclaration of function {}",
-                    declaration.function.identifier
-                ));
-            }
+        // let has_body = declaration.body.is_some();
+        // let mut already_defined = false;
+        // let mut global = declaration.storage_class != Some(StorageClass::Static);
 
-            let SymbolAttributes::Function {
-                defined: entry_defined,
-                global: entry_global,
-            } = entry.attrs
-            else {
-                unreachable!()
-            };
+        // if let Some(entry) = self.symbols.get(&declaration.function.identifier) {
+        //     if entry.ty != ty {
+        //         return Err(format!(
+        //             "Incompatible redeclaration of function {}",
+        //             declaration.function.identifier
+        //         ));
+        //     }
 
-            already_defined = entry_defined;
+        //     let SymbolAttributes::Function {
+        //         defined: entry_defined,
+        //         global: entry_global,
+        //     } = entry.attrs
+        //     else {
+        //         unreachable!()
+        //     };
 
-            if already_defined && has_body {
-                return Err(format!(
-                    "Redefinition of function {}",
-                    declaration.function.identifier
-                ));
-            }
+        //     already_defined = entry_defined;
 
-            if entry_global && declaration.storage_class == Some(StorageClass::Static) {
-                return Err(format!(
-                    "Static function declaration of {} after non-static declaration",
-                    declaration.function.identifier
-                ));
-            }
+        //     if already_defined && has_body {
+        //         return Err(format!(
+        //             "Redefinition of function {}",
+        //             declaration.function.identifier
+        //         ));
+        //     }
 
-            global = entry_global;
-        }
+        //     if entry_global && declaration.storage_class == Some(StorageClass::Static) {
+        //         return Err(format!(
+        //             "Static function declaration of {} after non-static declaration",
+        //             declaration.function.identifier
+        //         ));
+        //     }
 
-        self.symbols.insert(
-            declaration.function.identifier.clone(),
-            Symbol {
-                ty,
-                attrs: SymbolAttributes::Function {
-                    defined: already_defined || has_body,
-                    global,
-                },
-            },
-        );
+        //     global = entry_global;
+        // }
 
-        let body = if let Some(body) = &declaration.body {
-            for parameter in &declaration.parameters {
-                self.symbols.insert(
-                    parameter.identifier.clone(),
-                    Symbol {
-                        ty: Type::Int,
-                        attrs: SymbolAttributes::Local,
-                    },
-                );
-            }
+        // self.symbols.insert(
+        //     declaration.function.identifier.clone(),
+        //     Symbol {
+        //         ty,
+        //         attrs: SymbolAttributes::Function {
+        //             defined: already_defined || has_body,
+        //             global,
+        //         },
+        //     },
+        // );
 
-            Some(self.handle_block(body)?)
-        } else {
-            None
-        };
+        // let body = if let Some(body) = &declaration.body {
+        //     for parameter in &declaration.parameters {
+        //         self.symbols.insert(
+        //             parameter.identifier.clone(),
+        //             Symbol {
+        //                 ty: Type::Int,
+        //                 attrs: SymbolAttributes::Local,
+        //             },
+        //         );
+        //     }
 
-        Ok(FunctionDeclaration {
-            function: declaration.function.clone(),
-            parameters: declaration.parameters.clone(),
-            body,
-            storage_class: declaration.storage_class,
-        })
+        //     Some(self.handle_block(body)?)
+        // } else {
+        //     None
+        // };
+
+        // Ok(FunctionDeclaration {
+        //     function: declaration.function.clone(),
+        //     parameters: declaration.parameters.clone(),
+        //     body,
+        //     storage_class: declaration.storage_class,
+        // })
     }
 
     fn handle_block(&mut self, block: &Block) -> Result<Block, String> {
@@ -393,49 +397,53 @@ impl TypeChecker {
                 declaration.clone()
             }
             Some(StorageClass::Static) => {
-                let initial = match declaration.initializer {
-                    Some(Expression::Constant(i)) => SymbolInitialValue::Initial(i),
-                    None => SymbolInitialValue::Initial(0),
-                    _ => {
-                        return Err(
-                            "Non-constant initializer on block-level static variable".to_string()
-                        )
-                    }
-                };
+                todo!();
 
-                self.symbols.insert(
-                    declaration.variable.identifier.clone(),
-                    Symbol {
-                        ty,
-                        attrs: SymbolAttributes::Static {
-                            initial,
-                            global: false,
-                        },
-                    },
-                );
+                // let initial = match declaration.initializer {
+                //     Some(Expression::Constant(i)) => SymbolInitialValue::Initial(i),
+                //     None => SymbolInitialValue::Initial(0),
+                //     _ => {
+                //         return Err(
+                //             "Non-constant initializer on block-level static variable".to_string()
+                //         )
+                //     }
+                // };
 
-                declaration.clone()
+                // self.symbols.insert(
+                //     declaration.variable.identifier.clone(),
+                //     Symbol {
+                //         ty,
+                //         attrs: SymbolAttributes::Static {
+                //             initial,
+                //             global: false,
+                //         },
+                //     },
+                // );
+
+                // declaration.clone()
             }
             None => {
-                self.symbols.insert(
-                    declaration.variable.identifier.clone(),
-                    Symbol {
-                        ty,
-                        attrs: SymbolAttributes::Local,
-                    },
-                );
+                todo!();
 
-                let initializer = if let Some(expr) = &declaration.initializer {
-                    Some(self.handle_expression(expr)?)
-                } else {
-                    None
-                };
+                // self.symbols.insert(
+                //     declaration.variable.identifier.clone(),
+                //     Symbol {
+                //         ty,
+                //         attrs: SymbolAttributes::Local,
+                //     },
+                // );
 
-                VariableDeclaration {
-                    variable: declaration.variable.clone(),
-                    initializer,
-                    storage_class: declaration.storage_class,
-                }
+                // let initializer = if let Some(expr) = &declaration.initializer {
+                //     Some(self.handle_expression(expr)?)
+                // } else {
+                //     None
+                // };
+
+                // VariableDeclaration {
+                //     variable: declaration.variable.clone(),
+                //     initializer,
+                //     storage_class: declaration.storage_class,
+                // }
             }
         })
     }
@@ -446,26 +454,28 @@ impl TypeChecker {
                 function,
                 arguments,
             } => {
-                let entry = self.symbols.get(&function.identifier).unwrap();
+                todo!();
 
-                let Type::Function { parameter_count } = entry.ty else {
-                    return Err(format!("{} is not a function", function.identifier));
-                };
+                // let entry = self.symbols.get(&function.identifier).unwrap();
 
-                if parameter_count != arguments.len() {
-                    return Err(format!(
-                        "Function {} expects {} arguments, got {}",
-                        function.identifier,
-                        parameter_count,
-                        arguments.len()
-                    ));
-                }
+                // let Type::Function { parameter_count } = entry.ty else {
+                //     return Err(format!("{} is not a function", function.identifier));
+                // };
 
-                for argument in arguments {
-                    self.handle_expression(argument)?;
-                }
+                // if parameter_count != arguments.len() {
+                //     return Err(format!(
+                //         "Function {} expects {} arguments, got {}",
+                //         function.identifier,
+                //         parameter_count,
+                //         arguments.len()
+                //     ));
+                // }
 
-                expr.clone()
+                // for argument in arguments {
+                //     self.handle_expression(argument)?;
+                // }
+
+                // expr.clone()
             }
             Expression::Variable(variable) => {
                 let entry = self.symbols.get(&variable.identifier).unwrap();
@@ -500,6 +510,7 @@ impl TypeChecker {
                 else_expr: Box::new(self.handle_expression(else_expr)?),
             },
             Expression::Constant(_) => expr.clone(),
+            Expression::Cast { ty, expr } => todo!(),
         })
     }
 

@@ -231,7 +231,7 @@ pub struct SwitchCases {
     pub default: Option<SwitchCaseLabel>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Constant {
     ConstantInt(i32),
     ConstantLong(i64),

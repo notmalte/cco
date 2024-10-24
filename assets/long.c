@@ -1,8 +1,9 @@
 int main(void) {
     long a = 1L;
-    long b = 2L;
+    long b = (long) 2;
+    long c = (3L);
 
-    long c = a + b;
+    long d = a + b + c;
 
-    return c;
+    return d;
 }

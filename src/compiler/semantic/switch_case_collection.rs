@@ -2,7 +2,8 @@ use std::collections::HashSet;
 
 use crate::compiler::{
     ast::{
-        Block, BlockItem, Declaration, Expression, Program, Statement, SwitchCaseLabel, SwitchCases,
+        Block, BlockItem, Constant, Declaration, Expression, Program, Statement, SwitchCaseLabel,
+        SwitchCases,
     },
     constants::SEMANTIC_CASE_PREFIX,
 };
@@ -83,7 +84,7 @@ impl SwitchCaseCollector {
                 return Err("Duplicate case value in switch statement".to_string());
             }
 
-            set.insert(*n);
+            set.insert(n.clone());
             merged.cases.push((expr.clone(), case_label.clone()));
         }
 
@@ -138,11 +139,17 @@ impl SwitchCaseCollector {
                 body,
                 label: _,
             } => {
-                let Expression::Constant(n) = expression else {
+                let Expression::Constant(c) = expression else {
                     return Err("Non-constant expression in switch case".to_string());
                 };
 
-                let case_label = self.fresh_switch_case_label(Some(&format!("value.{n}")));
+                let case_label = self.fresh_switch_case_label(Some(&format!(
+                    "value.{}",
+                    match c {
+                        Constant::ConstantInt(n) => n.to_string(),
+                        Constant::ConstantLong(n) => n.to_string(),
+                    }
+                )));
                 let (new_body, inner_cases) = self.handle_statement(body)?;
 
                 let merged = Self::merge_and_verify_switch_cases(

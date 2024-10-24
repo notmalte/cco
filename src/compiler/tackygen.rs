@@ -360,24 +360,26 @@ impl TackyGen {
 
                 if let Some(cases) = cases {
                     for (case_expr, case_label) in &cases.cases {
-                        let ast::Expression::Constant(case_expr) = case_expr else {
-                            unreachable!()
-                        };
+                        todo!();
 
-                        let dst = self.fresh_variable();
-                        ins.push(tacky::Instruction::Binary {
-                            op: tacky::BinaryOperator::Equal,
-                            lhs: controlling_value.clone(),
-                            rhs: tacky::Value::Constant(*case_expr),
-                            dst: dst.clone(),
-                        });
+                        // let ast::Expression::Constant(case_expr) = case_expr else {
+                        //     unreachable!()
+                        // };
 
-                        ins.push(tacky::Instruction::JumpIfNotZero {
-                            condition: tacky::Value::Variable(dst),
-                            target: tacky::Label {
-                                identifier: case_label.identifier.clone(),
-                            },
-                        });
+                        // let dst = self.fresh_variable();
+                        // ins.push(tacky::Instruction::Binary {
+                        //     op: tacky::BinaryOperator::Equal,
+                        //     lhs: controlling_value.clone(),
+                        //     rhs: tacky::Value::Constant(*case_expr),
+                        //     dst: dst.clone(),
+                        // });
+
+                        // ins.push(tacky::Instruction::JumpIfNotZero {
+                        //     condition: tacky::Value::Variable(dst),
+                        //     target: tacky::Label {
+                        //         identifier: case_label.identifier.clone(),
+                        //     },
+                        // });
                     }
 
                     if let Some(default_label) = &cases.default {
@@ -437,7 +439,7 @@ impl TackyGen {
         expr: &ast::Expression,
     ) -> tacky::Value {
         match expr {
-            ast::Expression::Constant(value) => tacky::Value::Constant(*value),
+            ast::Expression::Constant(value) => todo!(), // tacky::Value::Constant(*value),
             ast::Expression::Unary { op, expr: inner } => match op {
                 ast::UnaryOperator::PrefixIncrement | ast::UnaryOperator::PrefixDecrement => {
                     let variable = match *inner.clone() {
@@ -690,6 +692,7 @@ impl TackyGen {
 
                 tacky::Value::Variable(dst)
             }
+            ast::Expression::Cast { ty, expr } => todo!(),
         }
     }
 

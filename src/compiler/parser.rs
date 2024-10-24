@@ -1,8 +1,8 @@
-use std::collections::VecDeque;
+use std::{collections::VecDeque, u64};
 
 use crate::compiler::{
     ast::{
-        AssignmentOperator, BinaryOperator, Block, BlockItem, Declaration, Expression,
+        AssignmentOperator, BinaryOperator, Block, BlockItem, Constant, Declaration, Expression,
         ForInitializer, Function, FunctionDeclaration, Label, Program, Statement, StorageClass,
         Type, UnaryOperator, Variable, VariableDeclaration,
     },
@@ -38,7 +38,7 @@ fn parse_declarations(tokens: &mut VecDeque<Token>) -> Result<Vec<Declaration>, 
 }
 
 fn parse_declaration(tokens: &mut VecDeque<Token>) -> Result<Declaration, String> {
-    let (_, storage_class) = parse_type_and_storage_class(tokens)?;
+    let (ty, storage_class) = parse_type_and_storage_class(tokens)?;
 
     let Some(Token::Identifier(identifier)) = tokens.pop_front() else {
         return Err("Expected identifier".to_string());
@@ -47,6 +47,7 @@ fn parse_declaration(tokens: &mut VecDeque<Token>) -> Result<Declaration, String
     if let Some(Token::OpenParen) = tokens.front() {
         tokens.pop_front();
         let parameters = parse_parameters(tokens)?;
+        let (parameter_variables, parameter_types) = parameters.into_iter().unzip();
 
         let Some(Token::CloseParen) = tokens.pop_front() else {
             return Err("Expected close parenthesis".to_string());
@@ -61,8 +62,12 @@ fn parse_declaration(tokens: &mut VecDeque<Token>) -> Result<Declaration, String
 
         Ok(Declaration::Function(FunctionDeclaration {
             function: Function { identifier },
-            parameters,
+            parameters: parameter_variables,
             body,
+            ty: Type::Function {
+                return_type: Box::new(ty),
+                parameters: parameter_types,
+            },
             storage_class,
         }))
     } else {
@@ -82,22 +87,43 @@ fn parse_declaration(tokens: &mut VecDeque<Token>) -> Result<Declaration, String
         Ok(Declaration::Variable(VariableDeclaration {
             variable: Variable { identifier },
             initializer,
+            ty,
             storage_class,
         }))
+    }
+}
+
+fn parse_type(tokens: &mut VecDeque<Token>) -> Result<Type, String> {
+    let mut specifiers = Vec::new();
+
+    while let Some(&Token::IntKeyword | &Token::LongKeyword) = tokens.front() {
+        specifiers.push(tokens.pop_front().unwrap());
+    }
+
+    parse_type_from_specifiers(&specifiers)
+}
+
+fn parse_type_from_specifiers(specifiers: &[Token]) -> Result<Type, String> {
+    match specifiers {
+        [Token::IntKeyword] => Ok(Type::Int),
+        [Token::IntKeyword, Token::LongKeyword]
+        | [Token::LongKeyword, Token::IntKeyword]
+        | [Token::LongKeyword] => Ok(Type::Long),
+        [] => Err("Expected type specifier".to_string()),
+        _ => Err("Invalid type specifier".to_string()),
     }
 }
 
 fn parse_type_and_storage_class(
     tokens: &mut VecDeque<Token>,
 ) -> Result<(Type, Option<StorageClass>), String> {
-    let mut types = Vec::new();
+    let mut type_tokens = Vec::new();
     let mut storage_classes = Vec::new();
 
     loop {
         match tokens.front() {
-            Some(Token::IntKeyword) => {
-                tokens.pop_front();
-                types.push(Type::Int);
+            Some(Token::IntKeyword | Token::LongKeyword) => {
+                type_tokens.push(tokens.pop_front().unwrap());
             }
             Some(Token::StaticKeyword) => {
                 tokens.pop_front();
@@ -111,42 +137,40 @@ fn parse_type_and_storage_class(
         }
     }
 
-    if types.is_empty() || types.len() > 1 {
-        return Err("Expected exactly one type".to_string());
-    }
+    let ty = parse_type_from_specifiers(&type_tokens)?;
 
     if storage_classes.len() > 1 {
         return Err("Expected at most one storage class".to_string());
     }
 
-    Ok((types[0], storage_classes.pop()))
+    Ok((ty, storage_classes.pop()))
 }
 
-fn matches_start_of_declaration(tokens: &VecDeque<Token>) -> bool {
-    matches!(
-        tokens.front(),
-        Some(Token::IntKeyword | Token::StaticKeyword | Token::ExternKeyword)
-    )
+fn matches_type_specifier(tokens: Option<&Token>) -> bool {
+    matches!(tokens, Some(Token::IntKeyword | Token::LongKeyword))
 }
 
-fn parse_parameters(tokens: &mut VecDeque<Token>) -> Result<Vec<Variable>, String> {
+fn matches_start_of_declaration(token: Option<&Token>) -> bool {
+    matches!(token, Some(Token::StaticKeyword | Token::ExternKeyword))
+        || matches_type_specifier(token)
+}
+
+fn parse_parameters(tokens: &mut VecDeque<Token>) -> Result<Vec<(Variable, Type)>, String> {
     if let Some(Token::VoidKeyword) = tokens.front() {
         tokens.pop_front();
         return Ok(vec![]);
     }
 
-    let mut parameters = vec![];
+    let mut parameters = Vec::new();
 
     loop {
-        let Some(Token::IntKeyword) = tokens.pop_front() else {
-            return Err("Expected int keyword".to_string());
-        };
+        let ty = parse_type(tokens)?;
 
         let Some(Token::Identifier(identifier)) = tokens.pop_front() else {
             return Err("Expected identifier".to_string());
         };
 
-        parameters.push(Variable { identifier });
+        parameters.push((Variable { identifier }, ty));
 
         if let Some(Token::Comma) = tokens.front() {
             tokens.pop_front();
@@ -181,7 +205,7 @@ fn parse_block(tokens: &mut VecDeque<Token>) -> Result<Block, String> {
 }
 
 fn parse_block_item(tokens: &mut VecDeque<Token>) -> Result<BlockItem, String> {
-    if matches_start_of_declaration(tokens) {
+    if matches_start_of_declaration(tokens.front()) {
         parse_declaration(tokens).map(BlockItem::Declaration)
     } else {
         parse_statement(tokens).map(BlockItem::Statement)
@@ -415,7 +439,7 @@ fn parse_for_initializer(tokens: &mut VecDeque<Token>) -> Result<Option<ForIniti
         return Ok(None);
     }
 
-    if matches_start_of_declaration(tokens) {
+    if matches_start_of_declaration(tokens.front()) {
         let declaration = parse_declaration(tokens)?;
 
         let Declaration::Variable(vd) = declaration else {
@@ -607,10 +631,48 @@ fn parse_expression(
 
 fn parse_factor(tokens: &mut VecDeque<Token>) -> Result<Expression, String> {
     let mut factor = match tokens.front().cloned() {
-        // Some(Token::Constant(value)) => {
-        //     tokens.pop_front();
-        //     Expression::Constant(value)
-        // }
+        Some(Token::OpenParen) => {
+            tokens.pop_front();
+
+            if matches_type_specifier(tokens.front()) {
+                let ty = parse_type(tokens)?;
+
+                let Some(Token::CloseParen) = tokens.pop_front() else {
+                    return Err("Expected closing parenthesis".to_string());
+                };
+
+                let expr = parse_expression(tokens, 0)?;
+
+                Expression::Cast {
+                    ty,
+                    expr: Box::new(expr),
+                }
+            } else {
+                let inner = parse_expression(tokens, 0)?;
+                let Some(Token::CloseParen) = tokens.pop_front() else {
+                    return Err("Expected close parenthesis".to_string());
+                };
+                inner
+            }
+        }
+        Some(Token::ConstantInt(value)) => {
+            tokens.pop_front();
+
+            let value_i64: i64 = value.parse().map_err(|_| "Invalid integer".to_string())?;
+
+            if let Ok(value_i32) = value_i64.try_into() {
+                Expression::Constant(Constant::ConstantInt(value_i32))
+            } else {
+                Expression::Constant(Constant::ConstantLong(value_i64))
+            }
+        }
+        Some(Token::ConstantLong(value)) => {
+            tokens.pop_front();
+
+            let value_i64: i64 = value.parse().map_err(|_| "Invalid integer".to_string())?;
+
+            Expression::Constant(Constant::ConstantLong(value_i64))
+        }
         Some(Token::Identifier(identifier)) => {
             tokens.pop_front();
 
@@ -652,14 +714,6 @@ fn parse_factor(tokens: &mut VecDeque<Token>) -> Result<Expression, String> {
                 op,
                 expr: Box::new(inner),
             }
-        }
-        Some(Token::OpenParen) => {
-            tokens.pop_front();
-            let inner = parse_expression(tokens, 0)?;
-            let Some(Token::CloseParen) = tokens.pop_front() else {
-                return Err("Expected close parenthesis".to_string());
-            };
-            inner
         }
         _ => return Err("Expected factor".to_string()),
     };

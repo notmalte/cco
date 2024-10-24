@@ -155,6 +155,7 @@ impl IdentifierResolver {
             function: declaration.function.clone(),
             parameters,
             body,
+            ty: todo!(),
             storage_class: declaration.storage_class,
         })
     }
@@ -269,6 +270,7 @@ impl IdentifierResolver {
             Ok(VariableDeclaration {
                 variable: fresh,
                 initializer,
+                ty: todo!(),
                 storage_class: declaration.storage_class,
             })
         }
@@ -481,6 +483,7 @@ impl IdentifierResolver {
                     return Err(format!("Function {} not declared", function.identifier));
                 }
             }
+            Expression::Cast { ty, expr } => todo!(),
         })
     }
 
