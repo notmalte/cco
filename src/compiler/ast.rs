@@ -110,35 +110,62 @@ pub enum ForInitializer {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
-    Constant(Constant),
-    Variable(Variable),
+    Constant {
+        c: Constant,
+        ty: Option<Type>,
+    },
+    Variable {
+        v: Variable,
+        ty: Option<Type>,
+    },
     Cast {
-        ty: Type,
+        target_ty: Type,
         expr: Box<Expression>,
+        ty: Option<Type>,
     },
     Unary {
         op: UnaryOperator,
         expr: Box<Expression>,
+        ty: Option<Type>,
     },
     Binary {
         op: BinaryOperator,
         lhs: Box<Expression>,
         rhs: Box<Expression>,
+        ty: Option<Type>,
     },
     Assignment {
         op: AssignmentOperator,
         lhs: Box<Expression>,
         rhs: Box<Expression>,
+        ty: Option<Type>,
     },
     Conditional {
         condition: Box<Expression>,
         then_expr: Box<Expression>,
         else_expr: Box<Expression>,
+        ty: Option<Type>,
     },
     FunctionCall {
         function: Function,
         arguments: Vec<Expression>,
+        ty: Option<Type>,
     },
+}
+
+impl Expression {
+    pub fn ty(&self) -> Option<Type> {
+        match self {
+            Expression::Constant { ty, .. } => ty.clone(),
+            Expression::Variable { ty, .. } => ty.clone(),
+            Expression::Cast { ty, .. } => ty.clone(),
+            Expression::Unary { ty, .. } => ty.clone(),
+            Expression::Binary { ty, .. } => ty.clone(),
+            Expression::Assignment { ty, .. } => ty.clone(),
+            Expression::Conditional { ty, .. } => ty.clone(),
+            Expression::FunctionCall { ty, .. } => ty.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

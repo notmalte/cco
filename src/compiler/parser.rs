@@ -594,6 +594,7 @@ fn parse_expression(
                     op,
                     lhs: Box::new(left),
                     rhs: Box::new(right),
+                    ty: None,
                 };
             }
             Token::Question => {
@@ -613,6 +614,7 @@ fn parse_expression(
                     condition: Box::new(left),
                     then_expr: Box::new(then_expr),
                     else_expr: Box::new(else_expr),
+                    ty: None,
                 };
             }
             _ => {
@@ -622,6 +624,7 @@ fn parse_expression(
                     op,
                     lhs: Box::new(left),
                     rhs: Box::new(right),
+                    ty: None,
                 };
             }
         }
@@ -635,7 +638,7 @@ fn parse_factor(tokens: &mut VecDeque<Token>) -> Result<Expression, String> {
             tokens.pop_front();
 
             if matches_type_specifier(tokens.front()) {
-                let ty = parse_type(tokens)?;
+                let target_ty = parse_type(tokens)?;
 
                 let Some(Token::CloseParen) = tokens.pop_front() else {
                     return Err("Expected closing parenthesis".to_string());
@@ -644,8 +647,9 @@ fn parse_factor(tokens: &mut VecDeque<Token>) -> Result<Expression, String> {
                 let expr = parse_expression(tokens, 0)?;
 
                 Expression::Cast {
-                    ty,
+                    target_ty,
                     expr: Box::new(expr),
+                    ty: None,
                 }
             } else {
                 let inner = parse_expression(tokens, 0)?;
@@ -661,9 +665,15 @@ fn parse_factor(tokens: &mut VecDeque<Token>) -> Result<Expression, String> {
             let value_i64: i64 = value.parse().map_err(|_| "Invalid integer".to_string())?;
 
             if let Ok(value_i32) = value_i64.try_into() {
-                Expression::Constant(Constant::ConstantInt(value_i32))
+                Expression::Constant {
+                    c: Constant::ConstantInt(value_i32),
+                    ty: None,
+                }
             } else {
-                Expression::Constant(Constant::ConstantLong(value_i64))
+                Expression::Constant {
+                    c: Constant::ConstantLong(value_i64),
+                    ty: None,
+                }
             }
         }
         Some(Token::ConstantLong(value)) => {
@@ -671,7 +681,10 @@ fn parse_factor(tokens: &mut VecDeque<Token>) -> Result<Expression, String> {
 
             let value_i64: i64 = value.parse().map_err(|_| "Invalid integer".to_string())?;
 
-            Expression::Constant(Constant::ConstantLong(value_i64))
+            Expression::Constant {
+                c: Constant::ConstantLong(value_i64),
+                ty: None,
+            }
         }
         Some(Token::Identifier(identifier)) => {
             tokens.pop_front();
@@ -700,9 +713,13 @@ fn parse_factor(tokens: &mut VecDeque<Token>) -> Result<Expression, String> {
                 Expression::FunctionCall {
                     function: Function { identifier },
                     arguments,
+                    ty: None,
                 }
             } else {
-                Expression::Variable(Variable { identifier })
+                Expression::Variable {
+                    v: Variable { identifier },
+                    ty: None,
+                }
             }
         }
         Some(
@@ -713,6 +730,7 @@ fn parse_factor(tokens: &mut VecDeque<Token>) -> Result<Expression, String> {
             Expression::Unary {
                 op,
                 expr: Box::new(inner),
+                ty: None,
             }
         }
         _ => return Err("Expected factor".to_string()),
@@ -723,6 +741,7 @@ fn parse_factor(tokens: &mut VecDeque<Token>) -> Result<Expression, String> {
         factor = Expression::Unary {
             op,
             expr: Box::new(factor),
+            ty: None,
         };
     }
 
@@ -816,7 +835,10 @@ mod tests {
                 parameters: vec![],
                 body: Some(Block {
                     items: vec![BlockItem::Statement(Statement::Return(
-                        Expression::Constant(Constant::ConstantInt(42)),
+                        Expression::Constant {
+                            c: Constant::ConstantInt(42),
+                            ty: None,
+                        },
                     ))],
                 }),
                 ty: Type::Function {
