@@ -18,8 +18,14 @@ pub enum SymbolAttributes {
 #[derive(Debug, Clone, Copy)]
 pub enum SymbolInitialValue {
     Tentative,
-    Initial(i64),
+    Initial(SymbolStaticInitial),
     None,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum SymbolStaticInitial {
+    Int(i32),
+    Long(i64),
 }
 
 #[derive(Debug, Clone)]

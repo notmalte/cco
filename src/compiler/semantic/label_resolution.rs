@@ -54,7 +54,7 @@ impl LabelResolver {
                 function: fd.function.clone(),
                 parameters: fd.parameters.clone(),
                 body: Some(body),
-                ty: todo!(),
+                ty: fd.ty.clone(),
                 storage_class: fd.storage_class,
             })
         } else {
