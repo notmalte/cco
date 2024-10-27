@@ -94,7 +94,7 @@ impl TackyGen {
                                 identifier: identifier.clone(),
                             },
                             global,
-                            initial,
+                            initial: todo!(), // initial,
                         }));
                     }
                     SymbolInitialValue::None => {}
@@ -439,13 +439,18 @@ impl TackyGen {
         expr: &ast::Expression,
     ) -> tacky::Value {
         match expr {
-            ast::Expression::Constant(value) => todo!(), // tacky::Value::Constant(*value),
-            ast::Expression::Unary { op, expr: inner } => match op {
+            ast::Expression::Constant { c, ty } => todo!(), // tacky::Value::Constant(*value),
+            ast::Expression::Unary {
+                op,
+                expr: inner,
+                ty,
+            } => match op {
                 ast::UnaryOperator::PrefixIncrement | ast::UnaryOperator::PrefixDecrement => {
                     let variable = match *inner.clone() {
-                        ast::Expression::Variable(ast::Variable { identifier }) => {
-                            tacky::Variable { identifier }
-                        }
+                        ast::Expression::Variable {
+                            v: ast::Variable { identifier },
+                            ty,
+                        } => tacky::Variable { identifier },
                         _ => unreachable!(),
                     };
 
@@ -466,9 +471,10 @@ impl TackyGen {
                 }
                 ast::UnaryOperator::PostfixIncrement | ast::UnaryOperator::PostfixDecrement => {
                     let variable = match *inner.clone() {
-                        ast::Expression::Variable(ast::Variable { identifier }) => {
-                            tacky::Variable { identifier }
-                        }
+                        ast::Expression::Variable {
+                            v: ast::Variable { identifier },
+                            ty,
+                        } => tacky::Variable { identifier },
                         _ => unreachable!(),
                     };
 
@@ -509,7 +515,7 @@ impl TackyGen {
                     tacky::Value::Variable(dst)
                 }
             },
-            ast::Expression::Binary { op, lhs, rhs } => match op {
+            ast::Expression::Binary { op, lhs, rhs, ty } => match op {
                 ast::BinaryOperator::LogicalAnd => {
                     let dst = self.fresh_variable();
 
@@ -600,16 +606,18 @@ impl TackyGen {
                     tacky::Value::Variable(dst)
                 }
             },
-            ast::Expression::Variable(ast::Variable { identifier }) => {
-                tacky::Value::Variable(tacky::Variable {
-                    identifier: identifier.clone(),
-                })
-            }
-            ast::Expression::Assignment { op, lhs, rhs } => {
+            ast::Expression::Variable {
+                v: ast::Variable { identifier },
+                ty,
+            } => tacky::Value::Variable(tacky::Variable {
+                identifier: identifier.clone(),
+            }),
+            ast::Expression::Assignment { op, lhs, rhs, ty } => {
                 let lhs_variable = match *lhs.clone() {
-                    ast::Expression::Variable(ast::Variable { identifier }) => {
-                        tacky::Variable { identifier }
-                    }
+                    ast::Expression::Variable {
+                        v: ast::Variable { identifier },
+                        ty,
+                    } => tacky::Variable { identifier },
                     _ => unreachable!(),
                 };
 
@@ -638,6 +646,7 @@ impl TackyGen {
                 condition,
                 then_expr,
                 else_expr,
+                ty,
             } => {
                 let dst = self.fresh_variable();
 
@@ -673,6 +682,7 @@ impl TackyGen {
             ast::Expression::FunctionCall {
                 function,
                 arguments,
+                ty,
             } => {
                 let dst = self.fresh_variable();
 
@@ -692,7 +702,11 @@ impl TackyGen {
 
                 tacky::Value::Variable(dst)
             }
-            ast::Expression::Cast { ty, expr } => todo!(),
+            ast::Expression::Cast {
+                target_ty,
+                expr,
+                ty,
+            } => todo!(),
         }
     }
 

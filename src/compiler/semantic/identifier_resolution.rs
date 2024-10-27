@@ -155,7 +155,7 @@ impl IdentifierResolver {
             function: declaration.function.clone(),
             parameters,
             body,
-            ty: todo!(),
+            ty: declaration.ty.clone(),
             storage_class: declaration.storage_class,
         })
     }
@@ -270,7 +270,7 @@ impl IdentifierResolver {
             Ok(VariableDeclaration {
                 variable: fresh,
                 initializer,
-                ty: todo!(),
+                ty: declaration.ty.clone(),
                 storage_class: declaration.storage_class,
             })
         }
@@ -412,58 +412,67 @@ impl IdentifierResolver {
 
     fn handle_expression(expr: &Expression, map: &IdentifierMap) -> Result<Expression, String> {
         Ok(match expr {
-            Expression::Constant(_) => expr.clone(),
-            Expression::Variable(var) => {
-                if let Some(entry) = map.get(&var.identifier) {
-                    Expression::Variable(Variable {
-                        identifier: entry.new_name.clone(),
-                    })
+            Expression::Constant { .. } => expr.clone(),
+            Expression::Variable { v, ty } => {
+                if let Some(entry) = map.get(&v.identifier) {
+                    Expression::Variable {
+                        v: Variable {
+                            identifier: entry.new_name.clone(),
+                        },
+                        ty: ty.clone(),
+                    }
                 } else {
-                    return Err(format!("Variable {} not declared", var.identifier));
+                    return Err(format!("Variable {} not declared", v.identifier));
                 }
             }
-            Expression::Unary { op, expr } => {
+            Expression::Unary { op, expr, ty } => {
                 if let UnaryOperator::PrefixIncrement
                 | UnaryOperator::PrefixDecrement
                 | UnaryOperator::PostfixIncrement
                 | UnaryOperator::PostfixDecrement = *op
                 {
-                    let Expression::Variable(_) = **expr else {
+                    let Expression::Variable { .. } = **expr else {
                         return Err("Invalid lvalue in increment/decrement".to_string());
                     };
                 }
                 Expression::Unary {
                     op: *op,
                     expr: Box::new(Self::handle_expression(expr, map)?),
+                    ty: ty.clone(),
                 }
             }
-            Expression::Binary { op, lhs, rhs } => Expression::Binary {
+            Expression::Binary { op, lhs, rhs, ty } => Expression::Binary {
                 op: *op,
                 lhs: Box::new(Self::handle_expression(lhs, map)?),
                 rhs: Box::new(Self::handle_expression(rhs, map)?),
+                ty: ty.clone(),
             },
-            Expression::Assignment { op, lhs, rhs } => {
-                let Expression::Variable(_) = **lhs else {
+            Expression::Assignment { op, lhs, rhs, ty } => {
+                let Expression::Variable { .. } = **lhs else {
                     return Err("Invalid lvalue in assignment".to_string());
                 };
                 Expression::Assignment {
                     op: *op,
                     lhs: Box::new(Self::handle_expression(lhs, map)?),
                     rhs: Box::new(Self::handle_expression(rhs, map)?),
+                    ty: ty.clone(),
                 }
             }
             Expression::Conditional {
                 condition,
                 then_expr,
                 else_expr,
+                ty,
             } => Expression::Conditional {
                 condition: Box::new(Self::handle_expression(condition, map)?),
                 then_expr: Box::new(Self::handle_expression(then_expr, map)?),
                 else_expr: Box::new(Self::handle_expression(else_expr, map)?),
+                ty: ty.clone(),
             },
             Expression::FunctionCall {
                 function,
                 arguments,
+                ty,
             } => {
                 if let Some(entry) = map.get(&function.identifier) {
                     let new_name = entry.new_name.clone();
@@ -478,12 +487,21 @@ impl IdentifierResolver {
                             identifier: new_name,
                         },
                         arguments: new_arguments,
+                        ty: ty.clone(),
                     }
                 } else {
                     return Err(format!("Function {} not declared", function.identifier));
                 }
             }
-            Expression::Cast { ty, expr } => todo!(),
+            Expression::Cast {
+                target_ty,
+                expr,
+                ty,
+            } => Expression::Cast {
+                target_ty: target_ty.clone(),
+                expr: Box::new(Self::handle_expression(expr, map)?),
+                ty: ty.clone(),
+            },
         })
     }
 
