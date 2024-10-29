@@ -644,7 +644,7 @@ fn parse_factor(tokens: &mut VecDeque<Token>) -> Result<Expression, String> {
                     return Err("Expected closing parenthesis".to_string());
                 };
 
-                let expr = parse_expression(tokens, 0)?;
+                let expr = parse_factor(tokens)?;
 
                 Expression::Cast {
                     target_ty,
