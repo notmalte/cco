@@ -75,17 +75,13 @@ impl SwitchCaseCollector {
 
         let mut set = HashSet::new();
 
-        for (expr, case_label) in lhs.cases.iter().chain(rhs.cases.iter()) {
-            let Expression::Constant { c, ty: _ } = expr else {
-                return Err("Non-constant expression in switch case".to_string());
-            };
-
+        for (c, case_label) in lhs.cases.iter().chain(rhs.cases.iter()) {
             if set.contains(c) {
                 return Err("Duplicate case value in switch statement".to_string());
             }
 
             set.insert(c.clone());
-            merged.cases.push((expr.clone(), case_label.clone()));
+            merged.cases.push((c.clone(), case_label.clone()));
         }
 
         Ok(Some(merged))
@@ -154,7 +150,7 @@ impl SwitchCaseCollector {
 
                 let merged = Self::merge_and_verify_switch_cases(
                     &Some(SwitchCases {
-                        cases: vec![(expression.clone(), case_label.clone())],
+                        cases: vec![(c.clone(), case_label.clone())],
                         default: None,
                     }),
                     &inner_cases,

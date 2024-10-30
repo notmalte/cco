@@ -254,7 +254,7 @@ pub struct SwitchCaseLabel {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SwitchCases {
-    pub cases: Vec<(Expression, SwitchCaseLabel)>,
+    pub cases: Vec<(Constant, SwitchCaseLabel)>,
     pub default: Option<SwitchCaseLabel>,
 }
 

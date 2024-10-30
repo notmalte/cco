@@ -1,6 +1,7 @@
 mod asm;
 mod ast;
 mod codegen;
+mod constant_conversion;
 mod constants;
 mod emitter;
 mod lexer;

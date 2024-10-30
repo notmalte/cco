@@ -16,6 +16,8 @@ pub fn analyze(program: &Program) -> Result<(Program, SymbolTable), String> {
     IdentifierResolver::analyze(program)
         .and_then(|program| LabelResolver::analyze(&program))
         .and_then(|program| LoopSwitchLabeler::analyze(&program))
-        .and_then(|program| SwitchCaseCollector::analyze(&program))
         .and_then(|program| TypeChecker::analyze(&program))
+        .and_then(|(program, symbols)| {
+            SwitchCaseCollector::analyze(&program).map(|program| (program, symbols))
+        })
 }

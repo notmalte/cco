@@ -4,6 +4,7 @@ use crate::compiler::{
         FunctionDeclaration, Program, Statement, StorageClass, Type, UnaryOperator::Not,
         VariableDeclaration,
     },
+    constant_conversion::convert_constant_to_type,
     symbols::{Symbol, SymbolAttributes, SymbolInitialValue, SymbolStaticInitial, SymbolTable},
 };
 
@@ -46,17 +47,10 @@ impl TypeChecker {
         }
     }
 
-    fn constant_to_static_initial(&self, c: &Constant, ty: &Type) -> SymbolStaticInitial {
-        match ty {
-            Type::Int => SymbolStaticInitial::Int(match c {
-                Constant::ConstantInt(n) => *n,
-                Constant::ConstantLong(n) => *n as i32,
-            }),
-            Type::Long => SymbolStaticInitial::Long(match c {
-                Constant::ConstantInt(n) => *n as i64,
-                Constant::ConstantLong(n) => *n,
-            }),
-            Type::Function { .. } => unreachable!(),
+    fn convert_constant_to_static_initial(&self, c: &Constant, ty: &Type) -> SymbolStaticInitial {
+        match convert_constant_to_type(c, ty) {
+            Constant::ConstantInt(n) => SymbolStaticInitial::Int(n),
+            Constant::ConstantLong(n) => SymbolStaticInitial::Long(n),
         }
     }
 
@@ -89,9 +83,9 @@ impl TypeChecker {
         declaration: &VariableDeclaration,
     ) -> Result<VariableDeclaration, String> {
         let mut initial = match &declaration.initializer {
-            Some(Expression::Constant { c, ty: _ }) => {
-                SymbolInitialValue::Initial(self.constant_to_static_initial(c, &declaration.ty))
-            }
+            Some(Expression::Constant { c, ty: _ }) => SymbolInitialValue::Initial(
+                self.convert_constant_to_static_initial(c, &declaration.ty),
+            ),
             None => {
                 if declaration.storage_class == Some(StorageClass::Extern) {
                     SymbolInitialValue::None
@@ -233,7 +227,13 @@ impl TypeChecker {
                 );
             }
 
-            Some(self.handle_block(body, return_type)?)
+            Some(self.handle_block(
+                body,
+                &EnclosingContext {
+                    function_return_type: *return_type.clone(),
+                    switch_expr_type: None,
+                },
+            )?)
         } else {
             None
         };
@@ -250,16 +250,14 @@ impl TypeChecker {
     fn handle_block(
         &mut self,
         block: &Block,
-        enclosing_return_type: &Type,
+        enclosing: &EnclosingContext,
     ) -> Result<Block, String> {
         let mut result = block.clone();
 
         for item in result.items.iter_mut() {
             match item {
                 BlockItem::Statement(statement) => {
-                    *item = BlockItem::Statement(
-                        self.handle_statement(statement, enclosing_return_type)?,
-                    );
+                    *item = BlockItem::Statement(self.handle_statement(statement, enclosing)?);
                 }
                 BlockItem::Declaration(declaration) => {
                     *item =
@@ -274,12 +272,13 @@ impl TypeChecker {
     fn handle_statement(
         &mut self,
         statement: &Statement,
-        enclosing_return_type: &Type,
+        enclosing: &EnclosingContext,
     ) -> Result<Statement, String> {
         Ok(match statement {
             Statement::Return(expr) => {
                 let typed_expr = self.handle_expression(expr)?;
-                let converted_expr = self.convert_to_type(&typed_expr, enclosing_return_type);
+                let converted_expr =
+                    self.convert_to_type(&typed_expr, &enclosing.function_return_type);
 
                 Statement::Return(converted_expr)
             }
@@ -290,29 +289,25 @@ impl TypeChecker {
                 else_branch,
             } => Statement::If {
                 condition: self.handle_expression(condition)?,
-                then_branch: Box::new(self.handle_statement(then_branch, enclosing_return_type)?),
+                then_branch: Box::new(self.handle_statement(then_branch, enclosing)?),
                 else_branch: if let Some(else_branch) = else_branch {
-                    Some(Box::new(
-                        self.handle_statement(else_branch, enclosing_return_type)?,
-                    ))
+                    Some(Box::new(self.handle_statement(else_branch, enclosing)?))
                 } else {
                     None
                 },
             },
             Statement::Labeled(label, statement) => Statement::Labeled(
                 label.clone(),
-                Box::new(self.handle_statement(statement, enclosing_return_type)?),
+                Box::new(self.handle_statement(statement, enclosing)?),
             ),
-            Statement::Compound(block) => {
-                Statement::Compound(self.handle_block(block, enclosing_return_type)?)
-            }
+            Statement::Compound(block) => Statement::Compound(self.handle_block(block, enclosing)?),
             Statement::While {
                 condition,
                 body,
                 label,
             } => Statement::While {
                 condition: self.handle_expression(condition)?,
-                body: Box::new(self.handle_statement(body, enclosing_return_type)?),
+                body: Box::new(self.handle_statement(body, enclosing)?),
                 label: label.clone(),
             },
             Statement::DoWhile {
@@ -320,7 +315,7 @@ impl TypeChecker {
                 condition,
                 label,
             } => Statement::DoWhile {
-                body: Box::new(self.handle_statement(body, enclosing_return_type)?),
+                body: Box::new(self.handle_statement(body, enclosing)?),
                 condition: self.handle_expression(condition)?,
                 label: label.clone(),
             },
@@ -350,7 +345,7 @@ impl TypeChecker {
 
                 let condition = self.handle_opt_expression(condition)?;
                 let post = self.handle_opt_expression(post)?;
-                let body = Box::new(self.handle_statement(body, enclosing_return_type)?);
+                let body = Box::new(self.handle_statement(body, enclosing)?);
 
                 Statement::For {
                     initializer,
@@ -367,7 +362,13 @@ impl TypeChecker {
                 label,
             } => {
                 let expression = self.handle_expression(expression)?;
-                let body = Box::new(self.handle_statement(body, enclosing_return_type)?);
+                let body = Box::new(self.handle_statement(
+                    body,
+                    &EnclosingContext {
+                        function_return_type: enclosing.function_return_type.clone(),
+                        switch_expr_type: Some(expression.ty().unwrap()),
+                    },
+                )?);
 
                 Statement::Switch {
                     expression,
@@ -380,13 +381,28 @@ impl TypeChecker {
                 expression,
                 body,
                 label,
-            } => Statement::Case {
-                expression: expression.clone(),
-                body: Box::new(self.handle_statement(body, enclosing_return_type)?),
-                label: label.clone(),
-            },
+            } => {
+                let Expression::Constant { c, ty: _ } = expression else {
+                    return Err("Non-constant expression in switch case".to_string());
+                };
+
+                let Some(switch_expr_type) = &enclosing.switch_expr_type else {
+                    return Err("Unexpected switch case outside of switch statement".to_string());
+                };
+
+                let converted_c = convert_constant_to_type(c, switch_expr_type);
+
+                Statement::Case {
+                    expression: Expression::Constant {
+                        c: converted_c,
+                        ty: Some(switch_expr_type.clone()),
+                    },
+                    body: Box::new(self.handle_statement(body, enclosing)?),
+                    label: label.clone(),
+                }
+            }
             Statement::Default { body, label } => Statement::Default {
-                body: Box::new(self.handle_statement(body, enclosing_return_type)?),
+                body: Box::new(self.handle_statement(body, enclosing)?),
                 label: label.clone(),
             },
 
@@ -447,11 +463,12 @@ impl TypeChecker {
             Some(StorageClass::Static) => {
                 let initial = match &declaration.initializer {
                     Some(Expression::Constant { c, ty: _ }) => SymbolInitialValue::Initial(
-                        self.constant_to_static_initial(&c, &declaration.ty),
+                        self.convert_constant_to_static_initial(c, &declaration.ty),
                     ),
-                    None => SymbolInitialValue::Initial(
-                        self.constant_to_static_initial(&Constant::ConstantInt(0), &declaration.ty),
-                    ),
+                    None => SymbolInitialValue::Initial(self.convert_constant_to_static_initial(
+                        &Constant::ConstantInt(0),
+                        &declaration.ty,
+                    )),
                     _ => {
                         return Err(
                             "Non-constant initializer on block-level static variable".to_string()
@@ -690,4 +707,9 @@ impl TypeChecker {
             None => None,
         })
     }
+}
+
+struct EnclosingContext {
+    function_return_type: Type,
+    switch_expr_type: Option<Type>,
 }
