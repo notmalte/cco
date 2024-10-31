@@ -1,6 +1,6 @@
 use crate::compiler::{
     ast,
-    constants::{TAC_LABEL_PREFIX, TAC_VAR_PREFIX},
+    prefixes::{TAC_LABEL_PREFIX, TAC_VAR_PREFIX},
     symbols::{SymbolAttributes, SymbolInitialValue, SymbolTable},
     tacky,
 };

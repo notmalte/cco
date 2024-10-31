@@ -3,7 +3,7 @@ use crate::compiler::{
         Block, BlockItem, Declaration, Expression, ForInitializer, Function, FunctionDeclaration,
         Program, Statement, StorageClass, UnaryOperator, Variable, VariableDeclaration,
     },
-    constants::SEMANTIC_VAR_PREFIX,
+    prefixes::SEMANTIC_VAR_PREFIX,
 };
 use std::collections::HashMap;
 

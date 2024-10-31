@@ -5,7 +5,7 @@ use crate::compiler::{
         Block, BlockItem, Constant, Declaration, Expression, Program, Statement, SwitchCaseLabel,
         SwitchCases,
     },
-    constants::SEMANTIC_CASE_PREFIX,
+    prefixes::SEMANTIC_CASE_PREFIX,
 };
 
 pub struct SwitchCaseCollector {

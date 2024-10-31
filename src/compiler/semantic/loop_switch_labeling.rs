@@ -3,7 +3,7 @@ use crate::compiler::{
         Block, BlockItem, Declaration, LoopLabel, LoopOrSwitchLabel, Program, Statement,
         SwitchLabel,
     },
-    constants::{SEMANTIC_LOOP_PREFIX, SEMANTIC_SWITCH_PREFIX},
+    prefixes::{SEMANTIC_LOOP_PREFIX, SEMANTIC_SWITCH_PREFIX},
 };
 
 struct Enclosing {

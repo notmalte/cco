@@ -1,6 +1,6 @@
 use crate::compiler::{
     ast::{Block, BlockItem, Declaration, FunctionDeclaration, Label, Program, Statement},
-    constants::SEMANTIC_LABEL_PREFIX,
+    prefixes::SEMANTIC_LABEL_PREFIX,
 };
 use std::collections::HashMap;
 
